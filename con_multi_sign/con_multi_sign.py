@@ -26,9 +26,7 @@ def seed():
     lastDay.set(datetime.datetime(year=2022, month=3, day=26))
     spentToday.set(0)
 
-
-
-
+    
 def validRequirements(ownerCount: int, req: int):
     assert req < ownerCount and req > 0 and ownerCount > 0, "invalid confirmation reqirements!"
 
