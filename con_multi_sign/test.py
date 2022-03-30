@@ -11,10 +11,6 @@ class MyTestCase(unittest.TestCase):
             contract = f.read()
             self.c.submit(contract, 'currency', constructor_args={"vk": "con_multi_sign"})
 
-        with open("../con_basic_token.py") as f:
-            contract = f.read()
-            self.c.submit(contract, 'basic_token', constructor_args={"vk": "sys"})
-
         with open("../non_lst001.py") as f:
             contract = f.read()
             self.c.submit(contract, 'non_lst001')
@@ -24,7 +20,6 @@ class MyTestCase(unittest.TestCase):
             self.c.submit(code, name="con_multi_sign")
 
         self.currency = self.c.get_contract("currency")
-        self.basic_token = self.c.get_contract("basic_token")
         self.non_lst001 = self.c.get_contract("non_lst001")
         self.multi_sign = self.c.get_contract("con_multi_sign")
         
@@ -33,8 +28,6 @@ class MyTestCase(unittest.TestCase):
 
     def setupApprovals(self):
         self.currency.approve(amount=999999999, to="con_multi_sign")
-        self.basic_token.approve(amount=999999999, to="con_multi_sign")
-
 
     def tearDown(self):
         self.c.flush()
@@ -105,7 +98,7 @@ class MyTestCase(unittest.TestCase):
     
     def test_submitTransaction_user_submiting_txn_should_fail(self):
         with self.assertRaises(AssertionError):
-            self.multi_sign.submitTransaction(signer="user123", contract="basic_token", amount=20, to="doug")
+            self.multi_sign.submitTransaction(signer="user123", contract="currency", amount=20, to="doug")
     
     def test_confirmTransaction_other_owner_confirming_txn_should_succeed(self):
         self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
