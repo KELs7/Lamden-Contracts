@@ -12,6 +12,7 @@ transactions = Hash()
 transactionCount = Variable()
 confirmations = Hash(default_value=False)
 ownerConfirmed = Hash(default_value=[])
+metadata = Hash()
 dailyLimit = Variable()
 lastDay = Variable()
 spentToday = Variable()
@@ -26,40 +27,118 @@ def seed():
     lastDay.set(datetime.datetime(year=2022, month=3, day=26))
     spentToday.set(0)
 
-    
+
 def validRequirements(ownerCount: int, req: int):
     assert req < ownerCount and req > 0 and ownerCount > 0, "invalid confirmation reqirements!"
 
 @export
-def addOwner(owner: str):
+def change_metadata(key: str, value: Any):
     user = ctx.caller
     ownerList = owners.get()
     assert user in ownerList, "only owner can call this method!"
-    assert owner not in ownerList, "owner already exist!"
-    validRequirements(len(ownerList) + 1, required.get())
-    ownerList.append(owner)
-    owners.set(ownerList)
+    assert value > 0, "cannot enter negative value!"
+    
+    keys = ["req", "dailylimit"]
+    if key in keys:
+        v = []
+        if key == keys[0]:
+            if isinstance(value, int):
+                metadata[key, user] = value
+                for owner in ownerList:
+                    if metadata[key, user] == metadata[key, owner]:
+                        v.append(value)
+                if len(v) == required.get():
+                    validRequirements(len(ownerList) , value)
+                    required.set(value)
+                    for owner in ownerList:
+                        metadata[key, user] = hashlib.sha256(str(now))
+                    return True
+
+                else:    
+                    return "there was no concensus to change required confirmations"
+        
+        if key == keys[1]:
+            if isinstance(value, decimal):
+                metadata[key, user] = value
+                #get value
+                for owner in ownerList:
+                    if metadata[key, user] == metadata[key, owner]:
+                        v.append(value)
+                #check if a certain number of owners have ...same value
+                if len(v) == required.get():
+                    dailyLimit.set(value)
+                    for owner in ownerList:
+                        metadata[key, user] = hashlib.sha256(str(now))
+                    return True
+                else:    
+                    return "there was no concensus to change dailylimit"
+    else:
+        return "key does not exist!"       
 
 @export
-def removeOwner(owner: str):
+def addOwner(newOwner: str):
     user = ctx.caller
     ownerList = owners.get()
     assert user in ownerList, "only owner can call this method!"
-    assert owner in ownerList, "owner does not exist!"
-    validRequirements(len(ownerList) - 1 , required.get())
-    ownerList.remove(owner)
-    owners.set(ownerList)
+    assert newOwner not in ownerList, "owner already exist!"
+    m = []
+    metadata["addOwner", user] = newOwner
+    for owner in ownerList:
+        if metadata["addOwner", user] == metadata["addOwner", owner]:
+            m.append(newOwner)
+    if len(m) == required.get():
+        validRequirements(len(ownerList) + 1, required.get())
+        for owner in ownerList:
+            metadata["addOwner", user] = hashlib.sha256(str(now))
+        ownerList.append(newOwner)
+        owners.set(ownerList)
+        return True
+    else:    
+        return f"there was no concensus to add {newOwner}"
 
 @export
-def replaceOwner(owner: str, newOwner: str):
+def removeOwner(existingOwner: str):
     user = ctx.caller
     ownerList = owners.get()
     assert user in ownerList, "only owner can call this method!"
-    assert owner in ownerList, "owner does not exist!"
-    assert newOwner not in ownerList, "newOwner already exist!"
-    ownerList.remove(owner)
-    ownerList.append(newOwner)
-    owners.set(ownerList)
+    assert existingOwner in ownerList, "owner does not exist!"
+    m = []
+    metadata["removeOwner", user] = existingOwner
+    for owner in ownerList:
+        if metadata["removeOwner", user] == metadata["removeOwner", owner]:
+            m.append(existingOwner)
+    if len(m) == required.get():
+        validRequirements(len(ownerList) - 1 , required.get())
+        for owner in ownerList:
+            metadata["removeOwner", user] = hashlib.sha256(str(now))
+        ownerList.remove(existingOwner)
+        owners.set(ownerList)
+        return True
+    else:    
+        return f"there was no concensus to remove {existingOwner}" 
+
+@export
+def replaceOwner(existingOwner: str, newOwner: str):
+    user = ctx.caller
+    ownerList = owners.get()
+    assert user in ownerList, "only owner can call this method!"
+    assert existingOwner in ownerList, "owner does not exist!"
+    assert newOwner not in ownerList, "newOwner already part of owners!"
+    m = []
+    metadata["replaceOwner", user] = newOwner
+    for owner in ownerList:
+        if metadata["replaceOwner", user] == metadata["replaceOwner", owner]:
+            m.append(newOwner)
+    if len(m) == required.get():
+        validRequirements(len(ownerList) + 1, required.get())
+        for owner in ownerList:
+            metadata["replaceOwner", user] = hashlib.sha256(str(now))
+        ownerList.remove(existingOwner)
+        ownerList.append(newOwner)
+        owners.set(ownerList)
+        return True
+    else:    
+        return f"there was no concensus to replace {existingOwner} with {newOwner}"
 
 @export
 def submitTransaction(contract: str, amount: float, to: str):
@@ -146,20 +225,5 @@ def getTransactionCount(pending: bool, executed: bool):
         if pending and not transactions[i]['executed'] or executed and transactions[i]['executed']:
             count += 1
     return count
-
-@export
-def changeRequirement(req: int):
-    user = ctx.caller
-    ownerList = owners.get()
-    assert user in ownerList, "only owner can call this method!"
-    validRequirements(len(ownerList) , req)
-    required.set(req)
-
-@export
-def changeDailyLimit(dailylimit : float):
-    user = ctx.caller
-    ownerList = owners.get()
-    assert user in ownerList, "only owner can call this method!"
-    dailyLimit.set(dailylimit)
     
 
