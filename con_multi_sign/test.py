@@ -175,13 +175,13 @@ class MyTestCase(unittest.TestCase):
             self.multi_sign.submitTransaction(signer="user123", contract="currency", amount=20, to="doug")
     
     def test_confirmTransaction_other_owner_confirming_txn_should_succeed(self):
-        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
+        self.multi_sign.submitTransaction(contract="currency", amount=20.56, to="benjos")
         self.multi_sign.confirmTransaction(signer="jeff", transactionId = 1)
         confirmation = self.c.get_var("con_multi_sign", "confirmations", arguments=[1, "jeff"])
         self.assertTrue(confirmation)
 
     def test_confirmTransaction_other_owner_confirming_to_execute_txn_should_succeed(self):
-        self.multi_sign.submitTransaction(signer="jeff", contract="currency", amount=20, to="mike")
+        self.multi_sign.submitTransaction(signer="jeff", contract="currency", amount=20.56, to="mike")
         self.multi_sign.confirmTransaction(signer="chris", transactionId = 1)
         transaction = self.c.get_var("con_multi_sign", "transactions", arguments=[1])
         self.assertTrue(transaction['executed'])
