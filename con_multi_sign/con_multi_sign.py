@@ -1,9 +1,15 @@
 I = importlib
 
-token_interface = [
+#LST001 contract interface
+LST001_interface = [
     I.Func('transfer', args=('amount', 'to')),
     I.Func('approve', args=('amount', 'to')),
     I.Func('transfer_from', args=('amount', 'to', 'main_account'))
+]
+
+#action contract interface
+action_core_interface = [
+    I.Func('interact', args=('action', 'payload'))
 ]
 
 owners = Variable()
@@ -141,15 +147,28 @@ def replaceOwner(existingOwner: str, newOwner: str):
         return f"there was no concensus to replace {existingOwner} with {newOwner}"
 
 @export
-def submitTransaction(contract: str, amount: float, to: str):
+def submitTransaction(contract: str, amount: float, to: str, action_core: str, action: str):
     assert amount > 0, "cannot enter negative value!"
     user = ctx.caller
     ownerList = owners.get()
-    token = I.import_module(contract)
+    #token = I.import_module(contract)
     assert user in ownerList, "only owner can call this method!"
-    assert I.enforce_interface(token, token_interface), 'invalid token interface!'
+    #assert I.enforce_interface(token, token_interface), 'invalid token interface!'
     transactionCount.set(transactionCount.get() + 1)
     transactionId = transactionCount.get()
+
+    if action_core and action:
+        transactions[transactionId] = {
+            'action_core': action_core
+            'action': action,
+            'method': 'transfer'
+            'amount': amount,
+            'to': to,
+            'executed': False
+        }
+        confirmTransaction(transactionId = transactionId)
+        return
+
     transactions[transactionId] = {
         'contract': contract,
         'amount': amount,
@@ -203,14 +222,29 @@ def executeTransaction(transactionId: int):
     txn = transactions[transactionId]
     assert user in ownerList, "only owner can call this method!"
     assert txn['executed'] is False, "txn already executed!"
-    if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']):
-        token = I.import_module(txn['contract'])
-        token.transfer(amount = txn['amount'], to = txn['to'])
-        spentToday.set(spentToday.get() + txn['amount'])
-        transactions[transactionId]['executed'] = True
-        return True
-    else: 
-        return False
+    contract = I.import_module(txn['contract'])
+
+    if I.ensure_interface(contract, LST001_interface):
+        if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']):
+            contract.transfer(amount = txn['amount'], to = txn['to'])
+            spentToday.set(spentToday.get() + txn['amount'])
+            transactions[transactionId]['executed'] = True
+            return True
+        else: 
+            return False
+
+    if I.ensure_interface(contract, action_core_interface):
+        if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']): 
+            contract.interact(action=txn['action'], payload={
+                'method': txn['method'],
+                'amount': txn['amount']
+                'to': txn['to']
+            })
+            spentToday.set(spentToday.get() + txn['amount'])
+            transactions[transactionId]['executed'] = True
+            return True
+        else: 
+            return False
 
 #don't see much usefullness of this method if there's a small number of confirmations required.
 #a web call and counting the owner list would suffice.
