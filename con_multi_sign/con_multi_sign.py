@@ -151,13 +151,13 @@ def submitTransaction(contract: str, amount: float, to: str, action_core: str, a
     assert amount > 0, "cannot enter negative value!"
     user = ctx.caller
     ownerList = owners.get()
-    contract = I.import_module(contract)
-    assert user in ownerList, "only owner can call this method!"
-    assert I.enforce_interface(token, LST001_interface) or I.enforce_interface(token, action_core_interface), 'invalid token interface!'
+    assert user in ownerList, "only owner can call this method!" 
     transactionCount.set(transactionCount.get() + 1)
     transactionId = transactionCount.get()
 
     if action_core and action:
+        action_core_contract = I.import_module(action_core)
+        assert I.enforce_interface(action_core_contract, action_core_interface), 'invalid token interface!'
         transactions[transactionId] = {
             'action_core': action_core,
             'action': action,
@@ -169,11 +169,13 @@ def submitTransaction(contract: str, amount: float, to: str, action_core: str, a
         confirmTransaction(transactionId = transactionId)
         return
 
+    token = I.import_module(contract)
+    assert I.enforce_interface(token, LST001_interface), 'invalid token interface!'
     transactions[transactionId] = {
-        'contract': contract,
-        'amount': amount,
-        'to': to,
-        'executed': False
+         'contract': contract,
+         'amount': amount,
+         'to': to,
+         'executed': False
     }
     confirmTransaction(transactionId = transactionId)
 
