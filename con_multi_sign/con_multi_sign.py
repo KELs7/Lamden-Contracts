@@ -187,7 +187,7 @@ def isConfirmed(transactionId: int):
     if len(ownerConfirmed[transactionId]) == required.get():
         return True
 
-def isUnderLimit(amount: int):
+def isUnderLimit(amount: float):
     assert amount > 0, "cannot enter negative value!"
     if now > lastDay.get() + datetime.timedelta(days=1):
             lastDay.set(now)
