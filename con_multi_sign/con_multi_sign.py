@@ -151,17 +151,17 @@ def submitTransaction(contract: str, amount: float, to: str, action_core: str, a
     assert amount > 0, "cannot enter negative value!"
     user = ctx.caller
     ownerList = owners.get()
-    #token = I.import_module(contract)
+    contract = I.import_module(contract)
     assert user in ownerList, "only owner can call this method!"
-    #assert I.enforce_interface(token, token_interface), 'invalid token interface!'
+    assert I.enforce_interface(token, LST001_interface) or I.enforce_interface(token, action_core_interface), 'invalid token interface!'
     transactionCount.set(transactionCount.get() + 1)
     transactionId = transactionCount.get()
 
     if action_core and action:
         transactions[transactionId] = {
-            'action_core': action_core
+            'action_core': action_core,
             'action': action,
-            'method': 'transfer'
+            'method': 'transfer',
             'amount': amount,
             'to': to,
             'executed': False
@@ -224,7 +224,7 @@ def executeTransaction(transactionId: int):
     assert txn['executed'] is False, "txn already executed!"
     contract = I.import_module(txn['contract'])
 
-    if I.ensure_interface(contract, LST001_interface):
+    if I.enforce_interface(contract, LST001_interface):
         if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']):
             contract.transfer(amount = txn['amount'], to = txn['to'])
             spentToday.set(spentToday.get() + txn['amount'])
@@ -233,11 +233,11 @@ def executeTransaction(transactionId: int):
         else: 
             return False
 
-    if I.ensure_interface(contract, action_core_interface):
+    if I.enforce_interface(contract, action_core_interface):
         if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']): 
             contract.interact(action=txn['action'], payload={
                 'method': txn['method'],
-                'amount': txn['amount']
+                'amount': txn['amount'],
                 'to': txn['to']
             })
             spentToday.set(spentToday.get() + txn['amount'])
