@@ -130,7 +130,7 @@ def replaceOwner(existingOwner: str, newOwner: str):
         if metadata["replaceOwner", user] == metadata["replaceOwner", owner]:
             m.append(newOwner)
     if len(m) == required.get():
-        validRequirements(len(ownerList) + 1, required.get())
+        validRequirements(len(ownerList), required.get())
         for owner in ownerList:
             metadata["replaceOwner", user] = hashlib.sha256(str(now))
         ownerList.remove(existingOwner)
