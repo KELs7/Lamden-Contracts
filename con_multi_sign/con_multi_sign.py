@@ -151,6 +151,7 @@ def submitTransaction(contract: str, amount: float, to: str, action_core: str, a
     assert amount > 0, "cannot enter negative value!"
     user = ctx.caller
     ownerList = owners.get()
+
     assert user in ownerList, "only owner can call this method!" 
     transactionCount.set(transactionCount.get() + 1)
     transactionId = transactionCount.get()
@@ -159,7 +160,7 @@ def submitTransaction(contract: str, amount: float, to: str, action_core: str, a
         action_core_contract = I.import_module(action_core)
         assert I.enforce_interface(action_core_contract, action_core_interface), 'invalid token interface!'
         transactions[transactionId] = {
-            'action_core': action_core,
+            'contract': action_core,
             'action': action,
             'method': 'transfer',
             'amount': amount,
@@ -226,15 +227,6 @@ def executeTransaction(transactionId: int):
     assert txn['executed'] is False, "txn already executed!"
     contract = I.import_module(txn['contract'])
 
-    if I.enforce_interface(contract, LST001_interface):
-        if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']):
-            contract.transfer(amount = txn['amount'], to = txn['to'])
-            spentToday.set(spentToday.get() + txn['amount'])
-            transactions[transactionId]['executed'] = True
-            return True
-        else: 
-            return False
-
     if I.enforce_interface(contract, action_core_interface):
         if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']): 
             contract.interact(action=txn['action'], payload={
@@ -247,6 +239,16 @@ def executeTransaction(transactionId: int):
             return True
         else: 
             return False
+
+    I.enforce_interface(contract, LST001_interface)
+    if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']):
+        contract.transfer(amount = txn['amount'], to = txn['to'])
+        spentToday.set(spentToday.get() + txn['amount'])
+        transactions[transactionId]['executed'] = True
+        return True
+    else: 
+        return False
+
 
 #don't see much usefullness of this method if there's a small number of confirmations required.
 #a web call and counting the owner list would suffice.
