@@ -1,7 +1,8 @@
 import unittest
-from decimal import Decimal 
+from decimal import Decimal
 from contracting.stdlib.bridge.time import Datetime
 from contracting.client import ContractingClient
+
 
 class MyTestCase(unittest.TestCase):
     def setUp(self):
@@ -10,29 +11,44 @@ class MyTestCase(unittest.TestCase):
 
         with open("../currency.s.py") as f:
             contract = f.read()
-            self.c.submit(contract, 'currency', constructor_args={"vk": "con_multi_sign"})
+            self.c.submit(contract, 'currency', constructor_args={
+                          "vk": "con_multi_sign"})
 
         with open("../non_lst001.py") as f:
             contract = f.read()
             self.c.submit(contract, 'non_lst001')
+
+        with open("../con_action_token/action_core.py") as f:
+            contract = f.read()
+            self.c.submit(contract, 'action_core')
+
+        with open("../con_action_token/action_token.py") as f:
+            contract = f.read()
+            self.c.submit(contract, 'action_token', owner='action_core')
 
         with open("./con_multi_sign.py") as f:
             code = f.read()
             self.c.submit(code, name="con_multi_sign")
 
         self.currency = self.c.get_contract("currency")
+        self.action_core = self.c.get_contract('action_core')
+        #self.action_token = self.c.get_contract('action_token')
         self.non_lst001 = self.c.get_contract("non_lst001")
         self.multi_sign = self.c.get_contract("con_multi_sign")
-        
-        self.setupApprovals()
 
+        # action contract registered
+        self.action_core.register_action(
+            action='token', contract='action_token')
+
+        #self.setupApprovals()
 
     def setupApprovals(self):
         self.currency.approve(amount=999999999, to="con_multi_sign")
 
     def tearDown(self):
         self.c.flush()
-    
+
+   
     def test_change_metadata_owners_agreeing_on_a_value_should_succeed(self):
         
         #default number of required confirmations is 2
@@ -152,6 +168,7 @@ class MyTestCase(unittest.TestCase):
         with self.assertRaises(AssertionError):
             self.multi_sign.replaceOwner(existingOwner = "jeff", newOwner = "benjos")
     
+#LST001 token support tests
     def test_submitTransaction_owner_submiting_and_confirming_txn_should_succeed(self):
         self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
         txn = {
@@ -165,6 +182,8 @@ class MyTestCase(unittest.TestCase):
         confirmation = self.c.get_var("con_multi_sign", "confirmations", arguments=[1, "sys"])
         self.assertEqual(txn, transaction)
         self.assertTrue(confirmation)
+
+#non compliant contract
 
     def test_submitTransaction_owner_submiting_txn_with_a_lst001_non_compliant_should_fail(self):
         with self.assertRaises(AssertionError):
@@ -207,21 +226,7 @@ class MyTestCase(unittest.TestCase):
         with self.assertRaises(AssertionError):
             self.multi_sign.confirmTransaction(signer="jeff", transactionId = 2)
             
-    def test_revokeTransaction_owner_revoking_txn_should_succeed(self):
-        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
-        self.multi_sign.revokeTransaction(transactionId = 1)
-        confirmation = self.c.get_var("con_multi_sign", "confirmations", arguments=[1, "sys"])
-        self.assertFalse(confirmation)
-
-    def test_revokeTransaction_a_user_revoking_a_txn_should_fail(self):
-        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
-        with self.assertRaises(AssertionError):
-            self.multi_sign.revokeTransaction(signer="user123", transactionId = 1)
-
-    def test_revokeTransaction_other_owner_revoking_txn_without_previous_confirmation_should_fail(self):
-        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
-        with self.assertRaises(AssertionError):
-            self.multi_sign.revokeTransaction(signer="jeff", transactionId = 1)
+    
 
     #this test does not apply when required confirmations is 2
     #
@@ -231,11 +236,6 @@ class MyTestCase(unittest.TestCase):
     #    self.multi_sign.revokeTransaction(signer="jeff", transactionId = 1)
     #    confirmation = self.c.get_var("con_multi_sign", "confirmations", arguments=[1, "jeff"])
     #    self.assertFalse(confirmation)
-    
-    def test_revokeTransaction_other_owner_revoking_a_nonExistingTxn_should_fail(self):
-        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
-        with self.assertRaises(AssertionError):
-            self.multi_sign.revokeTransaction(signer="jeff", transactionId = 2)
     
     def test_executeTransaction_owner_executing_an_already_executed_txn_should_fail(self):
         self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
@@ -261,7 +261,57 @@ class MyTestCase(unittest.TestCase):
         transaction = self.c.get_var("con_multi_sign", "transactions", arguments=[1])
         self.assertFalse(executed)
         self.assertFalse(transaction['executed'])
-    
+
+
+# action core support tests
+
+    def test_submitTransaction_owner_submiting_and_confirming_txn_by_action_core_should_succeed(self):
+        self.multi_sign.submitTransaction(action_core="action_core", action="token", amount=20, to="benjos")
+        txn = {
+            'contract': 'action_core',
+            'action': 'token',
+            'function': 'transfer',
+            'amount': 20,
+            'to': 'benjos',
+            'executed': False
+        }
+
+        transaction = self.c.get_var(
+            "con_multi_sign", "transactions", arguments=[1])
+        confirmation = self.c.get_var(
+            "con_multi_sign", "confirmations", arguments=[1, "sys"])
+        self.assertEqual(txn, transaction)
+        self.assertTrue(confirmation)
+
+    def test_confirmTransaction_action_core_other_owner_confirming_to_execute_txn_should_succeed(self):
+        self.multi_sign.submitTransaction(signer="jeff", action_core="action_core", action="token", amount=20.56, to="mike")
+        self.multi_sign.confirmTransaction(signer="chris", transactionId = 1)
+        transaction = self.c.get_var("con_multi_sign", "transactions", arguments=[1])
+        self.assertTrue(transaction['executed'])
+
+
+
+    def test_revokeTransaction_owner_revoking_txn_should_succeed(self):
+        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
+        self.multi_sign.revokeTransaction(transactionId = 1)
+        confirmation = self.c.get_var("con_multi_sign", "confirmations", arguments=[1, "sys"])
+        self.assertFalse(confirmation)
+
+    def test_revokeTransaction_a_user_revoking_a_txn_should_fail(self):
+        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
+        with self.assertRaises(AssertionError):
+            self.multi_sign.revokeTransaction(signer="user123", transactionId = 1)
+
+    def test_revokeTransaction_other_owner_revoking_txn_without_previous_confirmation_should_fail(self):
+        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
+        with self.assertRaises(AssertionError):
+            self.multi_sign.revokeTransaction(signer="jeff", transactionId = 1)
+
+    def test_revokeTransaction_other_owner_revoking_a_nonExistingTxn_should_fail(self):
+        self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
+        with self.assertRaises(AssertionError):
+            self.multi_sign.revokeTransaction(signer="jeff", transactionId = 2)
+
     def test_getConfirmationCount_user_checking_confirmation_count_should_succeed(self):
         self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
         self.multi_sign.confirmTransaction(signer="chris", transactionId = 1)
@@ -304,6 +354,6 @@ class MyTestCase(unittest.TestCase):
         self.multi_sign.submitTransaction(signer="benjos", contract="currency", amount=20, to="doug")
         transactions = self.multi_sign.getTransactionCount(signer="user123", pending = False, executed = False)
         self.assertEqual(transactions, 0)
-    
+
 if __name__ == "__main__":
-        unittest.main()
+    unittest.main()
