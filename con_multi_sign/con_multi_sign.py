@@ -162,7 +162,7 @@ def submitTransaction(contract: str, amount: float, to: str, action_core: str, a
         transactions[transactionId] = {
             'contract': action_core,
             'action': action,
-            'method': 'transfer',
+            'function': 'transfer',
             'amount': amount,
             'to': to,
             'executed': False
@@ -230,7 +230,7 @@ def executeTransaction(transactionId: int):
     if I.enforce_interface(contract, action_core_interface):
         if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']): 
             contract.interact(action=txn['action'], payload={
-                'method': txn['method'],
+                'function': txn['function'],
                 'amount': txn['amount'],
                 'to': txn['to']
             })

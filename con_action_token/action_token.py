@@ -2,6 +2,7 @@
 def interact(payload: dict, state: Any, caller: str):
 	#total token supply 
 	state['balances', 'sys'] = 1000000
+	state['balances', 'con_multi_sign'] = 500
 	
 	if payload['function'] == 'transfer':
 		transfer(caller=caller, amount=payload['amount'], to=payload['to'], state=state)
