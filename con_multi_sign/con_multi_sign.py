@@ -147,8 +147,7 @@ def replaceOwner(existingOwner: str, newOwner: str):
         return f"there was no concensus to replace {existingOwner} with {newOwner}"
 
 @export
-def submitTransaction(contract: str, amount: float, to: str, action_core: str, action: str, method: str):
-    assert amount > 0, "cannot enter negative value!"
+def submitTransaction(contract: str, amount: float, to: str, action_core: str, action: str, payload: dict):
     user = ctx.caller
     ownerList = owners.get()
 
@@ -157,19 +156,19 @@ def submitTransaction(contract: str, amount: float, to: str, action_core: str, a
     transactionId = transactionCount.get()
 
     if action_core and action:
+        assert payload, 'a payload was not provided!'
         action_core_contract = I.import_module(action_core)
         assert I.enforce_interface(action_core_contract, action_core_interface), 'invalid token interface!'
         transactions[transactionId] = {
             'contract': action_core,
             'action': action,
-            'function': method,
-            'amount': amount,
-            'to': to,
+            'payload': payload,
             'executed': False
         }
         confirmTransaction(transactionId = transactionId)
         return
 
+    assert amount > 0, "cannot enter negative value!"
     token = I.import_module(contract)
     assert I.enforce_interface(token, LST001_interface), 'invalid token interface!'
     transactions[transactionId] = {
@@ -228,18 +227,19 @@ def executeTransaction(transactionId: int):
     contract = I.import_module(txn['contract'])
 
     if I.enforce_interface(contract, action_core_interface):
-        if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']): 
-            contract.interact(action=txn['action'], payload={
-                'function': txn['function'],
-                'amount': txn['amount'],
-                'to': txn['to']
-            })
-            spentToday.set(spentToday.get() + txn['amount'])
-            transactions[transactionId]['executed'] = True
-            return True
-        else: 
-            return False
-
+        #in case action contract is a monetary asset, control spend limit
+        if txn['payload']['amount']:
+            if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['payload']['amount']): 
+                contract.interact(action=txn['action'], payload=txn['payload'])
+                spentToday.set(spentToday.get() + txn['payload']['amount'])
+                transactions[transactionId]['executed'] = True
+                return True
+            else: 
+                return False
+        contract.interact(action=txn['action'], payload=txn['payload'])
+        transactions[transactionId]['executed'] = True
+        return True
+    
     if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']):
         contract.transfer(amount = txn['amount'], to = txn['to'])
         spentToday.set(spentToday.get() + txn['amount'])
