@@ -147,7 +147,7 @@ def replaceOwner(existingOwner: str, newOwner: str):
         return f"there was no concensus to replace {existingOwner} with {newOwner}"
 
 @export
-def submitTransaction(contract: str, amount: float, to: str, action_core: str, action: str):
+def submitTransaction(contract: str, amount: float, to: str, action_core: str, action: str, method: str):
     assert amount > 0, "cannot enter negative value!"
     user = ctx.caller
     ownerList = owners.get()
@@ -162,7 +162,7 @@ def submitTransaction(contract: str, amount: float, to: str, action_core: str, a
         transactions[transactionId] = {
             'contract': action_core,
             'action': action,
-            'function': 'transfer',
+            'function': method,
             'amount': amount,
             'to': to,
             'executed': False
@@ -240,7 +240,6 @@ def executeTransaction(transactionId: int):
         else: 
             return False
 
-    I.enforce_interface(contract, LST001_interface)
     if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']):
         contract.transfer(amount = txn['amount'], to = txn['to'])
         spentToday.set(spentToday.get() + txn['amount'])

@@ -188,6 +188,8 @@ class MyTestCase(unittest.TestCase):
     def test_submitTransaction_owner_submiting_txn_with_a_lst001_non_compliant_should_fail(self):
         with self.assertRaises(AssertionError):
             self.multi_sign.submitTransaction(contract="non_lst001", amount=20, to="doug")
+
+
     
     def test_submitTransaction_user_submiting_txn_should_fail(self):
         with self.assertRaises(AssertionError):
@@ -266,7 +268,7 @@ class MyTestCase(unittest.TestCase):
 # action core support tests
 
     def test_submitTransaction_owner_submiting_and_confirming_txn_by_action_core_should_succeed(self):
-        self.multi_sign.submitTransaction(action_core="action_core", action="token", amount=20, to="benjos")
+        self.multi_sign.submitTransaction(action_core="action_core", action="token", method="transfer", amount=20, to="benjos")
         txn = {
             'contract': 'action_core',
             'action': 'token',
@@ -284,7 +286,7 @@ class MyTestCase(unittest.TestCase):
         self.assertTrue(confirmation)
 
     def test_confirmTransaction_action_core_other_owner_confirming_to_execute_txn_should_succeed(self):
-        self.multi_sign.submitTransaction(signer="jeff", action_core="action_core", action="token", amount=20.56, to="mike")
+        self.multi_sign.submitTransaction(signer="jeff", action_core="action_core", action="token", method="transfer", amount=20.56, to="mike")
         self.multi_sign.confirmTransaction(signer="chris", transactionId = 1)
         transaction = self.c.get_var("con_multi_sign", "transactions", arguments=[1])
         self.assertTrue(transaction['executed'])
