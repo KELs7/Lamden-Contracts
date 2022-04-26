@@ -212,7 +212,7 @@ class MyTestCase(unittest.TestCase):
     def test_confirmTransaction_other_owner_confirming_txn_should_succeed(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20.56, to="benjos")
-        self.multi_sign.confirmTransaction(signer="jeff", transactionId=1)
+        self.multi_sign.confirmTransaction(signer="jeff", transaction_id=1)
         confirmation = self.c.get_var(
             "con_multi_sign", "confirmations", arguments=[1, "jeff"])
         self.assertTrue(confirmation)
@@ -220,7 +220,7 @@ class MyTestCase(unittest.TestCase):
     def test_confirmTransaction_other_owner_confirming_to_execute_txn_should_succeed(self):
         self.multi_sign.submitTransaction(
             signer="jeff", contract="currency", amount=20.56, to="mike")
-        self.multi_sign.confirmTransaction(signer="chris", transactionId=1)
+        self.multi_sign.confirmTransaction(signer="chris", transaction_id=1)
         transaction = self.c.get_var(
             "con_multi_sign", "transactions", arguments=[1])
         self.assertTrue(transaction['executed'])
@@ -230,47 +230,47 @@ class MyTestCase(unittest.TestCase):
             contract="currency", amount=20, to="benjos")
         with self.assertRaises(AssertionError):
             self.multi_sign.confirmTransaction(
-                signer="user123", transactionId=1)
+                signer="user123", transaction_id=1)
 
     def test_confirmTransaction_other_owner_confirming_an_executedTxn_should_fail(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
-        self.multi_sign.confirmTransaction(signer="chris", transactionId=1)
+        self.multi_sign.confirmTransaction(signer="chris", transaction_id=1)
         with self.assertRaises(AssertionError):
-            self.multi_sign.confirmTransaction(signer="jeff", transactionId=1)
+            self.multi_sign.confirmTransaction(signer="jeff", transaction_id=1)
 
     def test_confirmTransaction_owner_reconfirming_txn_should_fail(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
         with self.assertRaises(AssertionError):
-            self.multi_sign.confirmTransaction(transactionId=1)
+            self.multi_sign.confirmTransaction(transaction_id=1)
 
     def test_confirmTransaction_other_owner_confirming_a_nonExistingTxn_should_fail(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
         with self.assertRaises(AssertionError):
-            self.multi_sign.confirmTransaction(signer="jeff", transactionId=2)
+            self.multi_sign.confirmTransaction(signer="jeff", transaction_id=2)
 
     # this test does not apply when required confirmations is 2
     #
     # def test_revokeTransaction_other_owner_revoking_txn_with_previous_confirmation_should_succeed(self):
     #    self.multi_sign.submitTransaction(contract="currency", amount=20, to="benjos")
-    #    self.multi_sign.confirmTransaction(signer="jeff", transactionId = 1)
-    #    self.multi_sign.revokeTransaction(signer="jeff", transactionId = 1)
+    #    self.multi_sign.confirmTransaction(signer="jeff", transaction_id = 1)
+    #    self.multi_sign.revokeTransaction(signer="jeff", transaction_id = 1)
     #    confirmation = self.c.get_var("con_multi_sign", "confirmations", arguments=[1, "jeff"])
     #    self.assertFalse(confirmation)
 
     def test_executeTransaction_owner_executing_an_already_executed_txn_should_fail(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
-        self.multi_sign.confirmTransaction(signer="jeff", transactionId=1)
+        self.multi_sign.confirmTransaction(signer="jeff", transaction_id=1)
         with self.assertRaises(AssertionError):
-            self.multi_sign.executeTransaction(transactionId=1)
+            self.multi_sign.executeTransaction(transaction_id=1)
 
     def test_executeTransaction_owner_executing_a_txn_without_the_required_confirmations_should_fail(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
-        executed = self.multi_sign.executeTransaction(transactionId=1)
+        executed = self.multi_sign.executeTransaction(transaction_id=1)
         transaction = self.c.get_var(
             "con_multi_sign", "transactions", arguments=[1])
         self.assertFalse(executed)
@@ -281,13 +281,13 @@ class MyTestCase(unittest.TestCase):
             contract="currency", amount=20, to="benjos")
         with self.assertRaises(AssertionError):
             self.multi_sign.executeTransaction(
-                signer="user123", transactionId=1)
+                signer="user123", transaction_id=1)
 
     def test_executeTransaction_owner_spending_beyond_dailylimit_should_fail(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=1001, to="benjos")
         executed = self.multi_sign.confirmTransaction(
-            signer="jeff", transactionId=1)
+            signer="jeff", transaction_id=1)
         transaction = self.c.get_var(
             "con_multi_sign", "transactions", arguments=[1])
         self.assertFalse(executed)
@@ -320,7 +320,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_confirmTransaction_action_core_other_owner_confirming_to_execute_txn_should_succeed(self):
         self.multi_sign.submitTransaction(signer="jeff", action_core="action_core", action="token", payload={'function':'transfer', 'amount':20.56, 'to':'mike'})
-        self.multi_sign.confirmTransaction(signer="chris", transactionId=1)
+        self.multi_sign.confirmTransaction(signer="chris", transaction_id=1)
         transaction = self.c.get_var(
             "con_multi_sign", "transactions", arguments=[1])
         self.assertTrue(transaction['executed'])
@@ -328,7 +328,7 @@ class MyTestCase(unittest.TestCase):
     def test_revokeTransaction_owner_revoking_txn_should_succeed(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
-        self.multi_sign.revokeTransaction(transactionId=1)
+        self.multi_sign.revokeTransaction(transaction_id=1)
         confirmation = self.c.get_var(
             "con_multi_sign", "confirmations", arguments=[1, "sys"])
         self.assertFalse(confirmation)
@@ -338,26 +338,26 @@ class MyTestCase(unittest.TestCase):
             contract="currency", amount=20, to="benjos")
         with self.assertRaises(AssertionError):
             self.multi_sign.revokeTransaction(
-                signer="user123", transactionId=1)
+                signer="user123", transaction_id=1)
 
     def test_revokeTransaction_other_owner_revoking_txn_without_previous_confirmation_should_fail(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
         with self.assertRaises(AssertionError):
-            self.multi_sign.revokeTransaction(signer="jeff", transactionId=1)
+            self.multi_sign.revokeTransaction(signer="jeff", transaction_id=1)
 
     def test_revokeTransaction_other_owner_revoking_a_nonExistingTxn_should_fail(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
         with self.assertRaises(AssertionError):
-            self.multi_sign.revokeTransaction(signer="jeff", transactionId=2)
+            self.multi_sign.revokeTransaction(signer="jeff", transaction_id=2)
 
     def test_getConfirmationCount_user_checking_confirmation_count_should_succeed(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
-        self.multi_sign.confirmTransaction(signer="chris", transactionId=1)
+        self.multi_sign.confirmTransaction(signer="chris", transaction_id=1)
         confirmations = self.multi_sign.getConfirmationCount(
-            signer="user123", transactionId=1)
+            signer="user123", transaction_id=1)
         self.assertEqual(confirmations, 2)
 
     def test_getTransactionCount_user_checking_pending_txns_should_succeed(self):
@@ -374,13 +374,13 @@ class MyTestCase(unittest.TestCase):
     def test_getTransactionCount_user_checking_executed_txns_should_succeed(self):
         self.multi_sign.submitTransaction(
             contract="currency", amount=20, to="benjos")
-        self.multi_sign.confirmTransaction(signer="chris", transactionId=1)
+        self.multi_sign.confirmTransaction(signer="chris", transaction_id=1)
         self.multi_sign.submitTransaction(
             signer="jeff", contract="currency", amount=20, to="mike")
-        self.multi_sign.confirmTransaction(transactionId=2)
+        self.multi_sign.confirmTransaction(transaction_id=2)
         self.multi_sign.submitTransaction(
             signer="chris", contract="currency", amount=20, to="doug")
-        self.multi_sign.confirmTransaction(signer="benjos", transactionId=3)
+        self.multi_sign.confirmTransaction(signer="benjos", transaction_id=3)
         transactions = self.multi_sign.getTransactionCount(
             signer="user123", pending=False, executed=True)
         self.assertEqual(transactions, 3)
@@ -390,10 +390,10 @@ class MyTestCase(unittest.TestCase):
             contract="currency", amount=20, to="benjos")
         self.multi_sign.submitTransaction(
             signer="jeff", contract="currency", amount=20, to="mike")
-        self.multi_sign.confirmTransaction(transactionId=2)
+        self.multi_sign.confirmTransaction(transaction_id=2)
         self.multi_sign.submitTransaction(
             signer="chris", contract="currency", amount=20, to="doug")
-        self.multi_sign.confirmTransaction(signer="benjos", transactionId=3)
+        self.multi_sign.confirmTransaction(signer="benjos", transaction_id=3)
         self.multi_sign.submitTransaction(
             signer="benjos", contract="currency", amount=20, to="doug")
         transactions = self.multi_sign.getTransactionCount(
@@ -405,10 +405,10 @@ class MyTestCase(unittest.TestCase):
             contract="currency", amount=20, to="benjos")
         self.multi_sign.submitTransaction(
             signer="jeff", contract="currency", amount=20, to="mike")
-        self.multi_sign.confirmTransaction(transactionId=2)
+        self.multi_sign.confirmTransaction(transaction_id=2)
         self.multi_sign.submitTransaction(
             signer="chris", contract="currency", amount=20, to="doug")
-        self.multi_sign.confirmTransaction(signer="benjos", transactionId=3)
+        self.multi_sign.confirmTransaction(signer="benjos", transaction_id=3)
         self.multi_sign.submitTransaction(
             signer="benjos", contract="currency", amount=20, to="doug")
         transactions = self.multi_sign.getTransactionCount(

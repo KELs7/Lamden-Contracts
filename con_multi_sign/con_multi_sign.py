@@ -12,36 +12,43 @@ action_core_interface = [
     I.Func('interact', args=('action', 'payload'))
 ]
 
+#action interface
+action_interface = [
+    I.Func('interact', args=('payload', 'state', 'caller')),
+]
+
 owners = Variable()
 required = Variable()
 transactions = Hash()
-transactionCount = Variable()
+transaction_count = Variable()
 confirmations = Hash(default_value=False)
-ownerConfirmed = Hash(default_value=[])
+owner_confirmed = Hash(default_value=[])
 metadata = Hash()
-dailyLimit = Variable()
-lastDay = Variable()
-spentToday = Variable()
+daily_limit = Variable()
+last_day = Variable()
+spent_today = Variable()
+actions = Hash()
+S = Hash()
 
 
 @construct
 def seed():
     owners.set(['sys', 'benjos', 'jeff', 'chris'])
     required.set(2)
-    transactionCount.set(0)
-    dailyLimit.set(1000)
-    lastDay.set(datetime.datetime(year=2022, month=3, day=26))
-    spentToday.set(0)
+    transaction_count.set(0)
+    daily_limit.set(1000)
+    last_day.set(datetime.datetime(year=2022, month=3, day=26))
+    spent_today.set(0)
 
 
-def validRequirements(ownerCount: int, req: int):
-    assert req < ownerCount and req > 0 and ownerCount > 0, "invalid confirmation reqirements!"
+def valid_requirements(owner_count: int, req: int):
+    assert req < owner_count and req > 0 and owner_count > 0, "invalid confirmation reqirements!"
 
 @export
 def change_metadata(key: str, value: Any):
     user = ctx.caller
-    ownerList = owners.get()
-    assert user in ownerList, "only owner can call this method!"
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!"
     assert value > 0, "cannot enter negative value!"
     
     keys = ["req", "dailylimit"]
@@ -50,14 +57,15 @@ def change_metadata(key: str, value: Any):
         if key == keys[0]:
             if isinstance(value, int):
                 metadata[key, user] = value
-                for owner in ownerList:
+                for owner in owner_list:
                     if metadata[key, user] == metadata[key, owner]:
                         v.append(value)
                 if len(v) == required.get():
-                    validRequirements(len(ownerList) , value)
+                    valid_requirements(len(owner_list) , value)
                     required.set(value)
-                    for owner in ownerList:
-                        metadata[key, user] = hashlib.sha256(str(now))
+                    for owner in owner_list:
+                        if metadata[key, owner]:
+                            metadata[key, owner] = hashlib.sha256(str(now))
                     return True
 
                 else:    
@@ -67,14 +75,15 @@ def change_metadata(key: str, value: Any):
             if isinstance(value, decimal):
                 metadata[key, user] = value
                 #get value
-                for owner in ownerList:
+                for owner in owner_list:
                     if metadata[key, user] == metadata[key, owner]:
                         v.append(value)
                 #check if a certain number of owners have ...same value
                 if len(v) == required.get():
-                    dailyLimit.set(value)
-                    for owner in ownerList:
-                        metadata[key, user] = hashlib.sha256(str(now))
+                    daily_limit.set(value)
+                    for owner in owner_list:
+                        if metadata[key, owner]:
+                            metadata[key, owner] = hashlib.sha256(str(now))
                     return True
                 else:    
                     return "there was no concensus to change dailylimit"
@@ -82,168 +91,173 @@ def change_metadata(key: str, value: Any):
         return "key does not exist!"       
 
 @export
-def addOwner(newOwner: str):
+def add_owner(new_owner: str):
     user = ctx.caller
-    ownerList = owners.get()
-    assert user in ownerList, "only owner can call this method!"
-    assert newOwner not in ownerList, "owner already exist!"
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!"
+    assert new_owner not in owner_list, "owner already exist!"
     m = []
-    metadata["addOwner", user] = newOwner
-    for owner in ownerList:
-        if metadata["addOwner", user] == metadata["addOwner", owner]:
-            m.append(newOwner)
+    metadata["add_owner", user] = new_owner
+    for owner in owner_list:
+        if metadata["add_owner", user] == metadata["add_owner", owner]:
+            m.append(new_owner)
     if len(m) == required.get():
-        validRequirements(len(ownerList) + 1, required.get())
-        for owner in ownerList:
-            metadata["addOwner", user] = hashlib.sha256(str(now))
-        ownerList.append(newOwner)
-        owners.set(ownerList)
+        valid_requirements(len(owner_list) + 1, required.get())
+        for owner in owner_list:
+            if metadata["add_owner", owner]:
+                metadata["add_owner", owner] = hashlib.sha256(str(now))
+        owner_list.append(new_owner)
+        owners.set(owner_list)
         return True
     else:    
-        return f"there was no concensus to add {newOwner}"
+        return f"there was no concensus to add {new_owner}"
 
 @export
-def removeOwner(existingOwner: str):
+def remove_owner(existing_owner: str):
     user = ctx.caller
-    ownerList = owners.get()
-    assert user in ownerList, "only owner can call this method!"
-    assert existingOwner in ownerList, "owner does not exist!"
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!"
+    assert existing_owner in owner_list, "owner does not exist!"
     m = []
-    metadata["removeOwner", user] = existingOwner
-    for owner in ownerList:
-        if metadata["removeOwner", user] == metadata["removeOwner", owner]:
-            m.append(existingOwner)
+    metadata["remove_owner", user] = existing_owner
+    for owner in owner_list:
+        if metadata["remove_owner", user] == metadata["remove_owner", owner]:
+            m.append(existing_owner)
     if len(m) == required.get():
-        validRequirements(len(ownerList) - 1 , required.get())
-        for owner in ownerList:
-            metadata["removeOwner", user] = hashlib.sha256(str(now))
-        ownerList.remove(existingOwner)
-        owners.set(ownerList)
+        valid_requirements(len(owner_list) - 1 , required.get())
+        for owner in owner_list:
+            if metadata["remove_owner", owner]:
+                metadata["remove_owner", owner] = hashlib.sha256(str(now))
+        owner_list.remove(existing_owner)
+        owners.set(owner_list)
         return True
     else:    
-        return f"there was no concensus to remove {existingOwner}" 
+        return f"there was no concensus to remove {existing_owner}" 
 
 @export
-def replaceOwner(existingOwner: str, newOwner: str):
+def replace_owner(existing_owner: str, new_owner: str):
     user = ctx.caller
-    ownerList = owners.get()
-    assert user in ownerList, "only owner can call this method!"
-    assert existingOwner in ownerList, "owner does not exist!"
-    assert newOwner not in ownerList, "newOwner already part of owners!"
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!"
+    assert existing_owner in owner_list, "owner does not exist!"
+    assert new_owner not in owner_list, "new_owner already part of owners!"
     m = []
-    metadata["replaceOwner", user] = newOwner
-    for owner in ownerList:
-        if metadata["replaceOwner", user] == metadata["replaceOwner", owner]:
-            m.append(newOwner)
+    metadata["replace_owner", user] = new_owner
+    for owner in owner_list:
+        if metadata["replace_owner", user] == metadata["replace_owner", owner]:
+            m.append(new_owner)
     if len(m) == required.get():
-        validRequirements(len(ownerList), required.get())
-        for owner in ownerList:
-            metadata["replaceOwner", user] = hashlib.sha256(str(now))
-        ownerList.remove(existingOwner)
-        ownerList.append(newOwner)
-        owners.set(ownerList)
+        valid_requirements(len(owner_list), required.get())
+        for owner in owner_list:
+            if metadata["replace_owner", owner]:
+                metadata["replace_owner", owner] = hashlib.sha256(str(now))
+        owner_list.remove(existing_owner)
+        owner_list.append(new_owner)
+        owners.set(owner_list)
         return True
     else:    
-        return f"there was no concensus to replace {existingOwner} with {newOwner}"
+        return f"there was no concensus to replace {existing_owner} with {new_owner}"
 
 @export
-def submitTransaction(contract: str, amount: float, to: str, action_core: str, action: str, payload: dict):
+def submit_transaction(contract: str, amount: float, to: str, action_core: str, action: str, payload: dict):
     user = ctx.caller
-    ownerList = owners.get()
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!" 
+    transaction_count.set(transaction_count.get() + 1)
+    transaction_id = transaction_count.get()
 
-    assert user in ownerList, "only owner can call this method!" 
-    transactionCount.set(transactionCount.get() + 1)
-    transactionId = transactionCount.get()
-
+    #support for external action transactions
     if action_core and action:
         assert payload, 'a payload was not provided!'
         action_core_contract = I.import_module(action_core)
         assert I.enforce_interface(action_core_contract, action_core_interface), 'invalid token interface!'
-        transactions[transactionId] = {
+        transactions[transaction_id] = {
             'contract': action_core,
             'action': action,
             'payload': payload,
             'executed': False
         }
-        confirmTransaction(transactionId = transactionId)
-        return
+        confirm_transaction(transaction_id = transaction_id)
+        return transactions[transaction_id]
 
+    #support for LST001 transactions
     assert amount > 0, "cannot enter negative value!"
     token = I.import_module(contract)
     assert I.enforce_interface(token, LST001_interface), 'invalid token interface!'
-    transactions[transactionId] = {
+    transactions[transaction_id] = {
          'contract': contract,
          'amount': amount,
          'to': to,
          'executed': False
     }
-    confirmTransaction(transactionId = transactionId)
+    confirm_transaction(transaction_id = transaction_id)
+    return transactions[transaction_id]
 
 @export
-def confirmTransaction(transactionId: int):
+def confirm_transaction(transaction_id: int):
     user = ctx.caller
-    ownerList = owners.get()
-    transaction = transactions[transactionId]
-    assert user in ownerList, "only owner can call this method!"
+    owner_list = owners.get()
+    transaction = transactions[transaction_id]
+    assert user in owner_list, "only owner can call this method!"
     assert transaction, "transaction does not exist!"
     assert transaction['executed'] is False, "txn already executed!"
-    assert confirmations[transactionId, user] is False, "transaction is already confirmed by you!"
-    confirmations[transactionId, user] = True
-    ownerConfirmed[transactionId] += [user]
-    executeTransaction(transactionId = transactionId)
+    assert confirmations[transaction_id, user] is False, "transaction is already confirmed by you!"
+    confirmations[transaction_id, user] = True
+    owner_confirmed[transaction_id] += [user]
+    execute_transaction(transaction_id = transaction_id)
 
 @export
-def revokeTransaction(transactionId: int):
+def revoke_transaction(transaction_id: int):
     user = ctx.caller
-    ownerList = owners.get()
-    transaction = transactions[transactionId]
-    assert user in ownerList, "only owner can call this method!"
+    owner_list = owners.get()
+    transaction = transactions[transaction_id]
+    assert user in owner_list, "only owner can call this method!"
     assert transaction, "transaction does not exist!"
     assert transaction['executed'] is False, "txn already executed!"
-    assert confirmations[transactionId, user] is True, "transaction is not confirmed by you!"
-    confirmations[transactionId, user] = False
-    ownerConfirmed[transactionId].remove(user)
+    assert confirmations[transaction_id, user] is True, "transaction is not confirmed by you!"
+    confirmations[transaction_id, user] = False
+    owner_confirmed[transaction_id].remove(user)
 
-def isConfirmed(transactionId: int):
-    if len(ownerConfirmed[transactionId]) == required.get():
+def is_confirmed(transaction_id: int):
+    if len(owner_confirmed[transaction_id]) == required.get():
         return True
 
-def isUnderLimit(amount: float):
+def is_under_limit(amount: float):
     assert amount > 0, "cannot enter negative value!"
-    if now > lastDay.get() + datetime.timedelta(days=1):
-            lastDay.set(now)
-            spentToday.set(0)
-    if spentToday.get() + amount > dailyLimit.get():
+    if now > last_day.get() + datetime.timedelta(days=1):
+            last_day.set(now)
+            spent_today.set(0)
+    if spent_today.get() + amount > daily_limit.get():
         return False
     return True
 
 @export
-def executeTransaction(transactionId: int):
+def execute_transaction(transaction_id: int):
     user = ctx.caller
-    ownerList = owners.get()
-    txn = transactions[transactionId]
-    assert user in ownerList, "only owner can call this method!"
+    owner_list = owners.get()
+    txn = transactions[transaction_id]
+    assert user in owner_list, "only owner can call this method!"
     assert txn['executed'] is False, "txn already executed!"
     contract = I.import_module(txn['contract'])
 
     if I.enforce_interface(contract, action_core_interface):
         #in case action contract is a monetary asset, control spend limit
         if txn['payload']['amount']:
-            if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['payload']['amount']): 
+            if is_confirmed(transaction_id = transaction_id) and is_under_limit(txn['payload']['amount']): 
                 contract.interact(action=txn['action'], payload=txn['payload'])
-                spentToday.set(spentToday.get() + txn['payload']['amount'])
-                transactions[transactionId]['executed'] = True
+                spent_today.set(spent_today.get() + txn['payload']['amount'])
+                transactions[transaction_id]['executed'] = True
                 return True
             else: 
                 return False
         contract.interact(action=txn['action'], payload=txn['payload'])
-        transactions[transactionId]['executed'] = True
+        transactions[transaction_id]['executed'] = True
         return True
     
-    if isConfirmed(transactionId = transactionId) and isUnderLimit(txn['amount']):
+    if is_confirmed(transaction_id = transaction_id) and is_under_limit(txn['amount']):
         contract.transfer(amount = txn['amount'], to = txn['to'])
-        spentToday.set(spentToday.get() + txn['amount'])
-        transactions[transactionId]['executed'] = True
+        spent_today.set(spent_today.get() + txn['amount'])
+        transactions[transaction_id]['executed'] = True
         return True
     else: 
         return False
@@ -252,15 +266,122 @@ def executeTransaction(transactionId: int):
 #don't see much usefullness of this method if there's a small number of confirmations required.
 #a web call and counting the owner list would suffice.
 @export
-def getConfirmationCount(transactionId: int):
-    return len(ownerConfirmed[transactionId])
+def get_confirmation_count(transaction_id: int):
+    return len(owner_confirmed[transaction_id])
 
 @export
-def getTransactionCount(pending: bool, executed: bool):
+def get_transaction_count(pending: bool, executed: bool):
     count = 0
-    for i in range(1, transactionCount.get() + 1):
+    for i in range(1, transaction_count.get() + 1):
         if pending and not transactions[i]['executed'] or executed and transactions[i]['executed']:
             count += 1
     return count
+
+# action core 
+@export
+def register_action(action: str, contract: str):
+    user = ctx.caller
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!"
+    assert actions[action] is None, 'Action already registered!'
+
+    a = []
+    metadata["register_action", user] = action
+    for owner in owner_list:
+        if metadata["register_action", user] == metadata["register_action", owner]:
+            a.append(action)
+    if len(a) == required.get():
+        for owner in owner_list:
+            if metadata["register_action", owner]:
+                metadata["register_action", owner] = hashlib.sha256(str(now))
+
+
+        # Attempt to import the contract to make sure it is already submitted
+        p = I.import_module(contract)
+
+        # Assert ownership is election_house and interface is correct
+        assert I.owner_of(p) == ctx.this, \
+            'This contract must control the action contract!'
+
+        assert I.enforce_interface(p, action_interface), \
+            'Action contract does not follow the correct interface!'
+
+        actions[action] = contract
+
+
+        return True
+    else:    
+        return f"there was no concensus to register {action}"
+
+@export
+def unregister_action(action: str):
+    user = ctx.caller
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!"
+    assert actions[action] is not None, 'Action does not exist!'
+
+    a = []
+    metadata["unregister_action", user] = action
+    for owner in owner_list:
+        if metadata["unregister_action", user] == metadata["unregister_action", owner]:
+            a.append(action)
+    if len(a) == required.get():
+        for owner in owner_list:
+            if metadata["unregister_action", owner]:
+                metadata["unregister_action", owner] = hashlib.sha256(str(now))
+
+        actions[action] = None
+
+        return True
+    else:    
+        return f"there was no concensus to unregister {action}"
+
+@export
+def interact(action: str, payload: dict):
+    contract = actions[action]
+    user = ctx.caller
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!"
+    assert contract is not None, 'Invalid action!'
+
+    a = []
+    metadata["interact", user] = {'action':action, 'payload':payload}
+    for owner in owner_list:
+        if metadata["interact", user] == metadata["interact", owner]:
+            a.append({'action':action, 'payload':payload})
+    if len(a) == required.get():
+        for owner in owner_list:
+            if metadata["interact", owner]:
+                metadata["interact", owner] = hashlib.sha256(str(now))
+
+        module = I.import_module(contract)
+
+        result = module.interact(payload, S, user)
+        return result
+    else:
+        return False
+
+@export
+def bulk_interact(action: str, payloads: list):
+    user = ctx.caller
+    owner_list = owners.get()
+    assert user in owner_list, "only owner can call this method!"
+
+    b = []
+    metadata["bulk_interact", user] = {'action':action, 'payload':payloads}
+    for owner in owner_list:
+        if metadata["bulk_interact", user] == metadata["bulk_interact", owner]:
+            b.append({'action':action, 'payload':payloads})
+    if len(a) == required.get():
+        for owner in owner_list:
+            if metadata["bulk_interact", owner]:
+                metadata["bulk_interact", owner] = hashlib.sha256(str(now))
+
+        for payload in payloads:
+            interact(action, payload)
+
+        return True
+    else:
+        return False
     
 
