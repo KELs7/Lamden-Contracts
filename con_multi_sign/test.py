@@ -1,5 +1,6 @@
 import unittest
-from decimal import Decimal
+#from decimal import Decimal
+from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
 from contracting.client import ContractingClient
 
@@ -180,21 +181,90 @@ class MyTestCase(unittest.TestCase):
     #             existingOwner="jeff", newOwner="benjos")
 
 # LST001 token support tests
-    def test_submit_proposal_owner_proposing_requirement_should_succeed(self):
-        returned_proposal = self.multi_sign.submit_proposal(
-            proposal = {
-                'change_requirement': 3})
-        
-        proposal = {
-            'type': 'state_change',
-            'change_requirement': 3,
-            'executed': False
-        }
 
+    def test_submit_proposal_owner_proposing_to_add_new_owner_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'add_owner': 'traderrob'})
+
+        proposal = {
+            'type': 'state_update',
+            'add_owner': 'traderrob',
+            'executed': False}
         
+        submitted_proposal = self.multi_sign.proposal[1]
         confirmation = self.multi_sign.confirmations[1, 'sys']
-        self.assertEqual(proposal, returned_proposal)
+        self.assertEqual(proposal, submitted_proposal)
         self.assertTrue(confirmation)
+
+    def test_submit_proposal_owner_proposing_to_remove_owner_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'remove_owner': 'chris'})
+
+        proposal = {
+            'type': 'state_update',
+            'remove_owner': 'chris',
+            'executed': False}
+        
+        submitted_proposal = self.multi_sign.proposal[1]
+        confirmation = self.multi_sign.confirmations[1, 'sys']
+        self.assertEqual(proposal, submitted_proposal)
+        self.assertTrue(confirmation)
+
+    def test_submit_proposal_owner_proposing_to_replace_owner_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'replace_owner': {
+                    'new_owner': 'cray',
+                    'existing_owner': 'benjos'}})
+
+        proposal = {
+            'type': 'state_update',
+            'replace_owner': {
+                'new_owner': 'cray',
+                'existing_owner': 'benjos'},
+            'executed': False}
+        
+        submitted_proposal = self.multi_sign.proposal[1]
+        confirmation = self.multi_sign.confirmations[1, 'sys']
+        self.assertEqual(proposal, submitted_proposal)
+        self.assertTrue(confirmation)
+
+    def test_submit_proposal_owner_proposing_to_change_required_confirmation_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'change_requirement': 3})
+
+        proposal = {
+            'type': 'state_update',
+            'change_requirement': 3,
+            'executed': False}
+        
+        submitted_proposal = self.multi_sign.proposal[1]
+        confirmation = self.multi_sign.confirmations[1, 'sys']
+        self.assertEqual(proposal, submitted_proposal)
+        self.assertTrue(confirmation)
+
+    def test_submit_proposal_owner_proposing_to_chnage_required_confirmation_owner_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'change_dailylimit': {
+                    'token': 'currency',
+                    'amount': ContractingDecimal('3000')}})
+
+        proposal = {
+            'type': 'state_update',
+            'change_dailylimit': {
+                'token': 'currency',
+                'amount': ContractingDecimal('3000')},
+            'executed': False}
+        
+        submitted_proposal = self.multi_sign.proposal[1]
+        confirmation = self.multi_sign.confirmations[1, 'sys']
+        self.assertEqual(proposal, submitted_proposal)
+        self.assertTrue(confirmation)
+
 
 # # non compliant contract
 

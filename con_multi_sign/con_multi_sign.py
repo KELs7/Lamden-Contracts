@@ -118,7 +118,7 @@ def remove_owner(proposal_id: str):
 
 def replace_owner(proposal_id: str):
     new_owner = proposal[proposal_id]['replace_owner']['new_owner']
-    existing_owner = proposal_dict['replace_owner']['existing_owner']
+    existing_owner = proposal[proposal_id]['replace_owner']['existing_owner']
     owner_list = owners.get()
     assert existing_owner in owner_list, 'owner does not exist!'
     assert new_owner not in owner_list, 'new_owner already part of owners!'
@@ -133,20 +133,36 @@ def replace_owner(proposal_id: str):
         return f'there was no concensus to replace {existing_owner} with {new_owner}'
 
 @export
-def submit_proposal(proposal: dict):
+def submit_proposal(propsl: dict):
     user = ctx.caller
     owner_list = owners.get()
     assert user in owner_list, 'only owner can call this method!' 
     proposal_count.set(proposal_count.get() + 1)
     proposal_id = proposal_count.get()
 
-    proposal_dict = route_proposal(proposal)
+    proposal_dict = route_proposal(propsl)
+
+    #return proposal_dict
 
     #support for state changes proposal
-    if proposal_dict['type'] == 'state_change':
+    if proposal_dict['type'] == 'state_update':
+        #checks, should there be strict length checking?
+        keys = list(proposal_dict.keys())
+        if 'add_owner' in keys:
+            assert isinstance(proposal_dict['add_owner'], str), 'entry must be string!'
+        if 'remove_owner' in keys:
+            assert isinstance(proposal_dict['remove_owner'], str), 'entry must be string!'
+        if 'replace_owner' in keys:
+            assert isinstance(proposal_dict['replace_owner']['new_owner'], str), 'entry must be string!'
+            assert isinstance(proposal_dict['replace_owner']['existing_owner'], str), 'entry must be string!'
+        if 'change_requirement' in keys:
+            assert isinstance(proposal_dict['change_requirement'], int), 'entry must be int!'
+        if 'change_dailylimit' in keys:
+            #float or ContractingDecimal?
+            assert isinstance(proposal_dict['change_dailylimit'], decimal), 'entry must be decimal!'
         proposal[proposal_id] = proposal_dict
-        confirm_proposal(proposal_id = proposal_id)
-        return proposal[proposal_id]
+        return confirm_proposal(proposal_id = proposal_id)
+        #return proposal[proposal_id]
 
     #support for LST001 proposal
     # if proposal_dict['type'] == 'lst001_txn':
@@ -179,14 +195,14 @@ def submit_proposal(proposal: dict):
 def confirm_proposal(proposal_id: int):
     user = ctx.caller
     owner_list = owners.get()
-    proposal = proposal[proposal_id]
+    propsl = proposal[proposal_id]
     assert user in owner_list, 'only owner can call this method!'
-    assert proposal, 'proposal does not exist!'
-    assert proposal['executed'] is False, 'proposal already executed!'
+    assert propsl, 'proposal does not exist!'
+    assert propsl['executed'] is False, 'proposal already executed!'
     assert confirmations[proposal_id, user] is False, 'proposal is already confirmed by you!'
     confirmations[proposal_id, user] = True
     owner_confirmed[proposal_id] += [user]
-    execute_proposal(proposal_id = proposal_id)
+    return execute_proposal(proposal_id = proposal_id)
 
 @export
 def revoke_proposal(proposal_id: int):
@@ -217,17 +233,23 @@ def is_under_limit(amount: float):
 def execute_proposal(proposal_id: int):
     user = ctx.caller
     owner_list = owners.get()
-    proposal = proposal[proposal_id]
+    propsl = proposal[proposal_id]
     assert user in owner_list, 'only owner can call this method!'
-    assert proposal['executed'] is False, 'proposal already executed!'
+    assert propsl['executed'] is False, 'proposal already executed!'
 
-    if proposal['type'] == 'state_change':
-        if proposal['add_owner']:
-            add_owner(proposal_id=proposal_id)
-        if proposal['remove_owner']:
-            remove_owner(proposal_id=proposal_id)
-        if proposal['replace_owner']:
-            replace_owner(proposal_id=proposal_id)
+    if propsl['type'] == 'state_update':
+        keys = list(propsl.keys())
+        if 'add_owner' in keys:
+            return add_owner(proposal_id=proposal_id)
+        if 'remove_owner' in keys:
+            return remove_owner(proposal_id=proposal_id)
+        if 'replace_owner' in keys:
+            return replace_owner(proposal_id=proposal_id)
+        if 'change_requirement' in keys:
+            return change_requirement(proposal_id=proposal_id)
+        if 'change_dailylimit' in keys:
+            return change_dailylimit(proposal_id=proposal_id)
+        return 'invalid key!'
 
     # if proposal['type'] == 'lst001_proposal':
     #     if is_confirmed(proposal_id = proposal_id) and is_under_limit(proposal['amount']):
@@ -302,13 +324,14 @@ def route_proposal(proposal_dict: dict): #find a better name for parameter
     assert proposal_dict, 'proposal is empty or invalid!' #use a better error description
 
     keys = list(proposal_dict.keys())
+    #return keys
 
     # Metadata state changes
     state_changes = [
         'change_requirement',
         'change_dailylimit',
         'add_owner',
-        'remove_owner'
+        'remove_owner',
         'replace_owner'
     ]
 
@@ -318,14 +341,14 @@ def route_proposal(proposal_dict: dict): #find a better name for parameter
     # Action proposal
     action_transaction = ['action', 'payload']
     external_action_transactions= ['action_core', 'action', 'payload']
-
     
-    if keys in state_changes:
-        if keys == 'change_dailylimit':
-            assert proposal_dict['change_dailylimit'], 'a payload was not provided!' #will check if relevent
-        proposal_dict['type'] = 'state_change'
-        proposal_dict['executed'] = False
-        return proposal_dict
+    if len(keys) == 1:
+        if keys[0] in state_changes:
+            if keys[0] == 'change_dailylimit':
+                assert proposal_dict['change_dailylimit'], 'a payload was not provided!' #will check if relevent
+            proposal_dict['type'] = 'state_update'
+            proposal_dict['executed'] = False
+            return proposal_dict
 
 #     if keys == lst001_transaction:
 #         assert proposal_dict['payload'], 'a payload was not provided!'
@@ -379,6 +402,24 @@ def route_proposal(proposal_dict: dict): #find a better name for parameter
 # def bulk_interact(action: str, payloads: list):
 #     for payload in payloads:
 #         interact(action, payload)
+
+def change_requirement(proposal_id: str):
+    owner_list = owners.get()
+    value = proposal[proposal_id]['change_requirement']
+    if is_confirmed(proposal_id=proposal_id):
+        valid_requirements(len(owner_list) , value)
+        required.set(value)    
+        return True
+    else:    
+        return f'there was no concensus to change required confirmations to {value}'
+
+def change_dailylimit(proposal_id: str):
+    value = proposal[proposal_id]['change_dailylimit']
+    if is_confirmed(proposal_id=proposal_id):
+        daily_limit.set(value)    
+        return True
+    else:    
+        return f'there was no concensus to change dailylimit to {value}'
 
 
     
