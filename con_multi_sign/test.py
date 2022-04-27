@@ -231,6 +231,40 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(proposal, submitted_proposal)
         self.assertTrue(confirmation)
 
+    def test_submit_proposal_owner_proposing_to_register_action_contract_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'register_action': {
+                    'action': 'vToken',
+                    'contract': 'con_action'}})
+
+        proposal = {
+            'type': 'state_update',
+            'register_action': {
+                    'action': 'vToken',
+                    'contract': 'con_action'},
+            'executed': False}
+        
+        submitted_proposal = self.multi_sign.proposal[1]
+        confirmation = self.multi_sign.confirmations[1, 'sys']
+        self.assertEqual(proposal, submitted_proposal)
+        self.assertTrue(confirmation)
+
+    def test_submit_proposal_owner_proposing_to_unregister_action_contract_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'unregister_action': 'sToken'})
+
+        proposal = {
+            'type': 'state_update',
+            'unregister_action': 'sToken',
+            'executed': False}
+        
+        submitted_proposal = self.multi_sign.proposal[1]
+        confirmation = self.multi_sign.confirmations[1, 'sys']
+        self.assertEqual(proposal, submitted_proposal)
+        self.assertTrue(confirmation)
+
     def test_submit_proposal_owner_proposing_to_change_required_confirmation_should_succeed(self):
         self.multi_sign.submit_proposal(
             propsl = {
@@ -246,7 +280,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(proposal, submitted_proposal)
         self.assertTrue(confirmation)
 
-    def test_submit_proposal_owner_proposing_to_chnage_required_confirmation_owner_should_succeed(self):
+    def test_submit_proposal_owner_proposing_to_change_token_dailylimit_should_succeed(self):
         self.multi_sign.submit_proposal(
             propsl = {
                 'change_dailylimit': {
@@ -257,6 +291,44 @@ class MyTestCase(unittest.TestCase):
             'type': 'state_update',
             'change_dailylimit': {
                 'token': 'currency',
+                'amount': ContractingDecimal('3000')},
+            'executed': False}
+        
+        submitted_proposal = self.multi_sign.proposal[1]
+        confirmation = self.multi_sign.confirmations[1, 'sys']
+        self.assertEqual(proposal, submitted_proposal)
+        self.assertTrue(confirmation)
+
+    def test_submit_proposal_owner_proposing_to_change_action_dailylimit_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'change_dailylimit': {
+                    'action': 'gToken',
+                    'amount': ContractingDecimal('3000')}})
+
+        proposal = {
+            'type': 'state_update',
+            'change_dailylimit': {
+                'action': 'gToken',
+                'amount': ContractingDecimal('3000')},
+            'executed': False}
+        
+        submitted_proposal = self.multi_sign.proposal[1]
+        confirmation = self.multi_sign.confirmations[1, 'sys']
+        self.assertEqual(proposal, submitted_proposal)
+        self.assertTrue(confirmation)
+
+    def test_submit_proposal_owner_proposing_to_change_external_action_dailylimit_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'change_dailylimit': {
+                    'external_action': 'eToken',
+                    'amount': ContractingDecimal('3000')}})
+
+        proposal = {
+            'type': 'state_update',
+            'change_dailylimit': {
+                'external_action': 'eToken',
                 'amount': ContractingDecimal('3000')},
             'executed': False}
         
