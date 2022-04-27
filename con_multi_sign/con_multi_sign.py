@@ -195,17 +195,26 @@ def submit_proposal(propsl: dict):
                 assert isinstance(
                     proposal_dict['change_dailylimit']['amount'], decimal), 'entry must be decimal!'
         proposal[proposal_id] = proposal_dict
+        # REMOVE RETURN JUST FOR DEBUGGING PURPOSES
         return confirm_proposal(proposal_id=proposal_id)
-        # return proposal[proposal_id]
+        #return proposal[proposal_id]
 
-    # support for LST001 proposal
-    # if proposal_dict['type'] == 'lst001_txn':
-    #     assert proposal_dict['payload']['amount'] > 0, 'cannot enter negative value!'
-    #     token = I.import_module(proposal_dict[['token'])
-    #     assert I.enforce_interface(token, LST001_interface), 'invalid token interface!'
-    #     proposal[proposal_id] = proposal_dict
-    #     confirm_proposal(proposal_id = proposal_id)
-    #     return proposal[proposal_id]
+    #support for LST001 proposal
+    if proposal_dict['type'] == 'lst001_proposal':
+        assert proposal_dict['payload']['amount'] > 0, 'cannot enter negative value!'
+        assert isinstance(
+            proposal_dict['payload']['method'], str), 'entry must be string!'
+        assert isinstance(
+            proposal_dict['payload']['to'], str), 'entry must be string!'
+        token = I.import_module(proposal_dict['token'])
+        assert I.enforce_interface(token, LST001_interface), 'invalid token interface!'
+        #checks
+        if proposal_dict['payload']['method'] == 'transfer_from':
+            assert isinstance(
+                proposal_dict['payload']['main_account'], str), 'entry must be string!'
+        proposal[proposal_id] = proposal_dict
+        confirm_proposal(proposal_id = proposal_id)
+        return proposal[proposal_id]
 
     # support for action proposal
     # if proposal_dict['type'] == 'action_txn':
@@ -297,31 +306,31 @@ def execute_proposal(proposal_id: int):
             return change_dailylimit(proposal_id=proposal_id)
         return 'invalid key!'
 
-    # if proposal['type'] == 'lst001_proposal':
-    #     if is_confirmed(proposal_id = proposal_id) and is_under_limit(proposal['amount']):
-    #         if proposal_dict['payload']['transfer']:
-    #             contract.transfer(amount = proposal['amount'], to = proposal['to'])
-    #             spent_today.set(spent_today.get() + proposal['amount'])
-    #             proposal[proposal_id]['executed'] = True
-    #             return True
-    #         else:
-    #             return False
+    if proposal['type'] == 'lst001_proposal':
+        if is_confirmed(proposal_id = proposal_id) and is_under_limit(proposal['payload']['amount']):
+            if proposal_dict['payload']['method'] == 'transfer':
+                contract.transfer(amount = proposal['payload']['amount'], to = proposal['payload']['to'])
+                spent_today.set(spent_today.get() + proposal['payload']['amount'])
+                proposal[proposal_id]['executed'] = True
+                return True
+            else:
+                return False
 
-    #         if proposal['payload']['transfer_approve']:
-    #             contract.approve(amount = proposal['amount'], to = proposal['to'])
-    #             #spent_today.set(spent_today.get() + proposal['amount'])
-    #             proposal[proposal_id]['executed'] = True
-    #             return True
-    #         else:
-    #             return False
+            if proposal['payload']['method'] == 'approve':
+                contract.approve(amount = proposal['payload']['amount'], to = proposal['payload']['to'])
+                #spent_today.set(spent_today.get() + proposal['amount'])
+                proposal[proposal_id]['executed'] = True
+                return True
+            else:
+                return False
 
-    #         if proposal['payload']['transfer_from']:
-    #             contract.transfer(amount=proposal['amount'], to=proposal['to'], main_account=proposal['main_account'])
-    #             #spent_today.set(spent_today.get() + proposal['amount'])
-    #             proposal[proposal_id]['executed'] = True
-    #             return True
-    #         else:
-    #             return False
+            if proposal['payload']['method'] == 'transfer_from':
+                contract.transfer_from(amount=proposal['payload']['amount'], to=proposal['payload']['to'], main_account=proposal['payload']['main_account'])
+                #spent_today.set(spent_today.get() + proposal['amount'])
+                proposal[proposal_id]['executed'] = True
+                return True
+            else:
+                return False
 
     # if proposal['type'] == 'action_proposal':
     #     if proposal['payload']['amount']:
@@ -388,7 +397,7 @@ def route_proposal(proposal_dict: dict):  # find a better name for parameter
     ]
 
     # LST001 token proposal
-    lst001_transactions = ['token', 'payload']
+    lst001_transaction = ['token', 'payload']
 
     # Action proposal
     action_transaction = ['action', 'payload']
@@ -405,11 +414,11 @@ def route_proposal(proposal_dict: dict):  # find a better name for parameter
         else:
             return 'invalid key!'
 
-#     if keys == lst001_transaction:
-#         assert proposal_dict['payload'], 'a payload was not provided!'
-#         proposal_dict['type'] = 'lst001_proposal'
-#         proposal_dict['executed'] = False
-#         return proposal_dict
+    if keys == lst001_transaction:
+        assert proposal_dict['payload'], 'a payload was not provided!'
+        proposal_dict['type'] = 'lst001_proposal'
+        proposal_dict['executed'] = False
+        return proposal_dict
 
 #     if keys == action_transaction:
 #         assert proposal_dict['payload'], 'a payload was not provided!'

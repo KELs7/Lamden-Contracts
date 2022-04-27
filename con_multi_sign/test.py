@@ -180,7 +180,7 @@ class MyTestCase(unittest.TestCase):
     #         self.multi_sign.replaceOwner(
     #             existingOwner="jeff", newOwner="benjos")
 
-# LST001 token support tests
+# state_updates proposal tests
 
     def test_submit_proposal_owner_proposing_to_add_new_owner_should_succeed(self):
         self.multi_sign.submit_proposal(
@@ -337,6 +337,35 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(proposal, submitted_proposal)
         self.assertTrue(confirmation)
 
+# lst001 proposal tests
+
+    def test_submit_proposal_owner_proposing_a_token_transfer_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'token': 'currency',
+                'payload': {
+                    'method': 'transfer',
+                    'amount': 456,
+                    'to': 'test_test'}})
+
+    def test_submit_proposal_owner_proposing_a_token_approve_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'token': 'currency',
+                'payload': {
+                    'method': 'approve',
+                    'amount': 456,
+                    'to': 'test_test'}})
+
+    def test_submit_proposal_owner_proposing_a_token_transfer_from_should_succeed(self):
+        self.multi_sign.submit_proposal(
+            propsl = {
+                'token': 'currency',
+                'payload': {
+                    'method': 'transfer_from',
+                    'amount': 456,
+                    'to': 'test_test',
+                    'main_account': 'vault'}})
 
 # # non compliant contract
 
