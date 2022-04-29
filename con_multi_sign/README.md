@@ -101,7 +101,7 @@ submit_proposal(propsl={
 	'payload': {
 		'method': 'transfer',
 		'amount': 200,
-		'to': 'some_wallet'}}) #generalise to include all LST001 methods maybe
+		'to': 'some_wallet'}}) 
 ```
 
 `aprrove` and `transfer_from` methods are supported as well.
