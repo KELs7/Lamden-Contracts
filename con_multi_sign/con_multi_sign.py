@@ -518,9 +518,9 @@ def interact(action: str, payload: dict):
     result = module.interact(payload, S, user)
     return result   
 
-# def bulk_interact(action: str, payloads: list):
-#     for payload in payloads:
-#         interact(action, payload)
+def bulk_interact(action: str, payloads: list):
+    for payload in payloads:
+        interact(action, payload)
 
 
 
