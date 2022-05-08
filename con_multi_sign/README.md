@@ -79,20 +79,6 @@ submit_proposal(propsl={
 		'token': 'currency', 
 		'amount': 1000}})
 ```
-for an action contract of monetary value
-```
-submit_proposal(propsl={
-	'change_dailylimit': {
-		'action': 'gToken',
-		 'amount': 1000}})
-```
-action contract of an external action core contract
-```
-submit_proposal(propsl={
-	'change_dailylimit': {
-		'external_action': 'eToken',
-		 'amount': 1000}})
-```
 
 ### LST001 token transactions
 ```
@@ -139,9 +125,5 @@ This is a call to other action core contracts to execute a particular action met
 submit_proposal(propsl={
 	'action_core': 'some_external_action_core_contract', 
 	'action': 'some_action_contract', 
-	'bulk': False,
 	'payload':payload})
 ```
-
-
-
