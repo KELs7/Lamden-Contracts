@@ -26,21 +26,17 @@ owner_confirmed = Hash(default_value=[])
 metadata = Hash()
 daily_limit = Hash(default_value=0)
 last_day = Variable()
-spent_today = Variable()
+spent_today = Hash(default_value=0)
 actions = Hash()
-S = Hash()
+S = Hash(default_value=0)
 
 @construct
 def seed():
     owners.set(['sys', 'benjos', 'jeff', 'chris'])
     required.set(2)
     proposal_count.set(0)
-    daily_limit['currency'] = decimal('1000')
-    last_day.set(datetime.datetime(year=2022, month=3, day=26))
-    spent_today.set(0)
-    #initial action
-    actions['sToken']  = 'action_token'
-
+    daily_limit['currency'] = decimal('500')
+    last_day.set(datetime.datetime(year=2022, month=5, day=7))
 
 @export
 def submit_proposal(propsl: dict):
@@ -52,23 +48,26 @@ def submit_proposal(propsl: dict):
 
     proposal_dict = route_proposal(propsl)
 
-    # return proposal_dict
-
-    # state changes proposal
+    # state update proposal
     if proposal_dict['type'] == 'state_update':
-        # checks, should there be strict length checking?
+        # should wallet length be checked at frontend only?
         keys = list(proposal_dict.keys())
         if 'add_owner' in keys:
             assert isinstance(
                 proposal_dict['add_owner'], str), 'entry must be string!'
+            #assert len(proposal_dict['add_owner']) == 64, 'wallet address must be 64 character long!'
         if 'remove_owner' in keys:
             assert isinstance(
                 proposal_dict['remove_owner'], str), 'entry must be string!'
+            #assert len(proposal_dict['remove_owner']) == 64, 'wallet address must be 64 character long!'
         if 'replace_owner' in keys:
             assert isinstance(
                 proposal_dict['replace_owner']['new_owner'], str), 'entry must be string!'
             assert isinstance(
                 proposal_dict['replace_owner']['existing_owner'], str), 'entry must be string!'
+            #assert len(proposal_dict['replace_owner']['new_owner']) == 64, 'wallet address must be 64 character long!'
+            #assert len(proposal_dict['replace_owner']['existing_owner']) == 64, 'wallet address must be 64 character long!'
+
         if 'register_action' in keys:
             assert isinstance(
                 proposal_dict['register_action']['action'], str), 'entry must be string!'
@@ -81,59 +80,45 @@ def submit_proposal(propsl: dict):
             assert isinstance(
                 proposal_dict['change_requirement'], int), 'entry must be int!'
         if 'change_dailylimit' in keys:
-            d_keys = list(proposal_dict['change_dailylimit'].keys())
-            # float or ContractingDecimal?
-            if 'token' in d_keys:
-                assert isinstance(
-                    proposal_dict['change_dailylimit']['token'], str), 'entry must be string!'
-                assert isinstance(
-                    proposal_dict['change_dailylimit']['amount'], decimal), 'entry must be decimal!'
-            if 'action' in d_keys:
-                assert isinstance(
-                    proposal_dict['change_dailylimit']['action'], str), 'entry must be string!'
-                assert isinstance(
-                    proposal_dict['change_dailylimit']['amount'], decimal), 'entry must be decimal!'
-            if 'external_action' in d_keys:
-                assert isinstance(
-                    proposal_dict['change_dailylimit']['external_action'], str), 'entry must be string!'
-                assert isinstance(
-                    proposal_dict['change_dailylimit']['amount'], decimal), 'entry must be decimal!'
+            amt = proposal_dict['change_dailylimit']['amount']
+            assert isinstance(
+                proposal_dict['change_dailylimit']['token'], str), 'entry must be string!'
+            assert isinstance(amt, int) or isinstance(amt, float) or isinstance(amt, decimal),'entry must be int, float or decimal'
         proposal[proposal_id] = proposal_dict
-        # REMOVE RETURN JUST FOR DEBUGGING PURPOSES
-        return confirm_proposal(proposal_id=proposal_id)
-        #return proposal[proposal_id]
+        confirm_proposal(proposal_id=proposal_id)
+        return proposal[proposal_id]
 
     #support for LST001 proposal
     if proposal_dict['type'] == 'lst001_proposal':
-        assert proposal_dict['payload']['amount'] > 0, 'cannot enter negative value!'
+        amt = proposal_dict['payload']['amount']
+        assert isinstance(amt, int) or isinstance(amt, float) or isinstance(amt, decimal), 'entry must be int, float or decimal'
+        assert amt > 0, 'cannot enter negative value!'
         assert isinstance(
             proposal_dict['payload']['method'], str), 'entry must be string!'
         assert isinstance(
             proposal_dict['payload']['to'], str), 'entry must be string!'
         token = I.import_module(proposal_dict['token'])
         assert I.enforce_interface(token, LST001_interface), 'invalid token interface!'
-        #checks
         if proposal_dict['payload']['method'] == 'transfer_from':
             assert isinstance(
                 proposal_dict['payload']['main_account'], str), 'entry must be string!'
         proposal[proposal_id] = proposal_dict
-        return confirm_proposal(proposal_id = proposal_id)
-        #return proposal[proposal_id]
+        confirm_proposal(proposal_id = proposal_id)
+        return proposal[proposal_id]
 
     # support for action proposal
     if proposal_dict['type'] == 'action_proposal':
         assert isinstance(
             proposal_dict['action'], str), 'entry must be a string'
-        contract = actions[proposal_dict['action']]
-        assert contract is not None, 'invalid action!'
+        assert actions[proposal_dict['action']], 'invalid action!'
         assert isinstance(
             proposal_dict['bulk'], bool), 'entry must be a boolean!'
-        a_keys = list(proposal_dict['payload'].keys())
-        if 'amount' in  a_keys:
-            assert proposal_dict['payload']['amount'] > 0, 'cannot enter negative value!'
+        if proposal_dict['bulk'] == True:
+            assert isinstance(
+                proposal_dict['payload'], list), 'bulk payload must be a list!'
         proposal[proposal_id] = proposal_dict
-        return confirm_proposal(proposal_id = proposal_id)
-        #return proposal[proposal_id]
+        confirm_proposal(proposal_id = proposal_id)
+        return proposal[proposal_id]
 
     # support for external action proposal
     if proposal_dict['type'] == 'external_action_proposal':
@@ -141,15 +126,13 @@ def submit_proposal(propsl: dict):
             proposal_dict['action_core'], str), 'entry must be a string'
         assert isinstance(
             proposal_dict['action'], str), 'entry must be a string'
-        assert isinstance(
-            proposal_dict['bulk'], bool), 'entry must be a boolean!'
-        e_keys = list(proposal_dict['payload'].keys())
-        if 'amount' in  e_keys:
-            assert proposal_dict['payload']['amount'] > 0, 'cannot enter negative value!'
         action_core_contract = I.import_module(proposal_dict['action_core'])
         assert I.enforce_interface(action_core_contract, action_core_interface), 'invalid token interface!'
         proposal[proposal_id] = proposal_dict
-        return confirm_proposal(proposal_id = proposal_id)
+        confirm_proposal(proposal_id = proposal_id)
+        return proposal[proposal_id]
+
+    return 'invalid key entry in proposal!'
 
 @export
 def confirm_proposal(proposal_id: int):
@@ -169,12 +152,12 @@ def confirm_proposal(proposal_id: int):
 def revoke_proposal(proposal_id: int):
     user = ctx.caller
     owner_list = owners.get()
-    proposal = proposal[proposal_id]
+    propsl = proposal[proposal_id]
     assert user in owner_list, 'only owner can call this method!'
-    assert proposal, 'proposal does not exist!'
-    assert proposal['executed'] is False, 'proposal already executed!'
+    assert propsl, 'proposal does not exist!'
+    assert propsl['executed'] is False, 'proposal already executed!'
     assert confirmations[proposal_id,
-        user] is True, 'proposal is not confirmed by you!'
+        user] is True, 'one can only revoke a confirmed proposal!'
     confirmations[proposal_id, user] = False
     owner_confirmed[proposal_id].remove(user)
 
@@ -186,6 +169,7 @@ def execute_proposal(proposal_id: int):
     assert user in owner_list, 'only owner can call this method!'
     assert propsl['executed'] is False, 'proposal already executed!'
 
+    # execute state update proposals
     if propsl['type'] == 'state_update':
         keys = list(propsl.keys())
         if 'add_owner' in keys:
@@ -202,79 +186,68 @@ def execute_proposal(proposal_id: int):
             return change_requirement(proposal_id=proposal_id)
         if 'change_dailylimit' in keys:
             return change_dailylimit(proposal_id=proposal_id)
-        return 'invalid key!'
 
+    # execute lst001 transactions
     if propsl['type'] == 'lst001_proposal':
-        if propsl['payload']['method'] == 'transfer':
-            return handle_token_transfer(proposal_id=proposal_id)
-        if propsl['payload']['method'] == 'approve':
-            return handle_token_approve(proposal_id=proposal_id)
-        if propsl['payload']['method'] == 'transfer_from':
-            return handle_token_transfer_from(proposal_id=proposal_id)    
+        token = I.import_module(propsl['token'])
 
-    if propsl['type'] == 'action_proposal':
-        a_keys = list(propsl['payload'].keys())
-        if 'amount' in  a_keys:
-            if is_confirmed(proposal_id = proposal_id) and is_under_limit(propsl['payload']['amount']):
-                if propsl['bulk'] == True:
-                    bulk_interact(action=propsl['action'], payloads=propsl['payload'])
-                    spent_today.set(spent_today.get() + propsl['payload']['amount'])
-                    proposal[proposal_id]['executed'] = True
-                    return True
-                interact(action=propsl['action'], payload=propsl['payload'])
-                spent_today.set(spent_today.get() + propsl['payload']['amount'])
+        if propsl['payload']['method'] == 'transfer':
+            if is_confirmed(proposal_id = proposal_id) and is_under_limit(token=propsl['token'], amount=propsl['payload']['amount']):
+                token.transfer(amount = propsl['payload']['amount'], to = propsl['payload']['to'])
+                spent_today[propsl['token']] += propsl['payload']['amount']
                 proposal[proposal_id]['executed'] = True
                 return True
             else:
-                return f"there was no concensus to execute {propsl['action']} txn"
+                return f"there was no concensus to transfer {propsl['payload']['amount']} {propsl['token']} to {propsl['payload']['to']}" 
+
+        if propsl['payload']['method'] == 'approve':
+            if is_confirmed(proposal_id = proposal_id) and is_under_limit(token= propsl['token'], amount=propsl['payload']['amount']):
+                token.approve(amount = propsl['payload']['amount'], to = propsl['payload']['to'])
+                spent_today[propsl['token']] += propsl['payload']['amount']
+                proposal[proposal_id]['executed'] = True
+                return True
+            else:
+                return f"there was no concensus to approve {propsl['payload']['to']} to spend {propsl['payload']['amount']} {propsl['token']}"
+
+        if propsl['payload']['method'] == 'transfer_from':
+            if is_confirmed(proposal_id = proposal_id):
+                token.transfer_from(amount=propsl['payload']['amount'], to=propsl['payload']['to'], main_account=propsl['payload']['main_account'])
+                proposal[proposal_id]['executed'] = True
+                return True
+            else:
+                return f"there was no concensus to spend {propsl['payload']['amount']} {propsl['token']} from {propsl['payload']['main_account']}" 
+
+    # execute action transactions
+    if propsl['type'] == 'action_proposal':
         if is_confirmed(proposal_id = proposal_id):
             if propsl['bulk'] == True:
                 bulk_interact(action=propsl['action'], payloads=propsl['payload'])
-                #spent_today.set(spent_today.get() + proposal['payload']['amount'])
                 proposal[proposal_id]['executed'] = True
                 return True
-            interact(action=propsl['action'], payload=propsl['payload']) #what to do with return?
+            # what to do with return?
+            interact(action=propsl['action'], payload=propsl['payload']) 
             proposal[proposal_id]['executed'] = True
             return True
         else:
             return f"there was no concensus to execute {propsl['action']} txn"
-
+   
+    # execute external action transactions
     if propsl['type'] == 'external_action_proposal':
-        e_keys = list(propsl['payload'].keys())
         action_core = I.import_module(propsl['action_core'])
-        #in case action contract is a monetary asset, control spend limit
-        if 'amount' in  e_keys:
-            if is_confirmed(proposal_id = proposal_id) and is_under_limit(propsl['payload']['amount']):
-                if propsl['bulk'] == True:
-                    action_core.bulk_interact(action=propsl['action'], payloads=propsl['payload'])
-                    spent_today.set(spent_today.get() + propsl['payload']['amount'])
-                    propsl[proposal_id]['executed'] = True
-                    return True
-                action_core.interact(action=propsl['action'], payload=propsl['payload'])
-                spent_today.set(spent_today.get() + propsl['payload']['amount'])
-                proposal[proposal_id]['executed'] = True
-                return True
-            else:
-                return f"there was no concensus to execute {propsl['action']} txn from {propsl['action_core']}"
         if is_confirmed(proposal_id = proposal_id):
-            if propsl['bulk'] == True:
-                    action_core.bulk_interact(action=propsl['action'], payloads=propsl['payload'])
-                    #spent_today.set(spent_today.get() + propsl['payload']['amount'])
-                    propsl[proposal_id]['executed'] = True
-                    return True
             action_core.interact(action=propsl['action'], payload=propsl['payload'])
             proposal[proposal_id]['executed'] = True
             return True
         else:
             return f"there was no concensus to execute {propsl['action']} txn from {propsl['action_core']}"
-
+       
 # don't see much usefullness of this method if there's a small number of confirmations required.
 # a web call and counting the owner list would suffice.
-
 @export
 def get_confirmation_count(proposal_id: int):
     return len(owner_confirmed[proposal_id])
 
+# is this relevant if this can be done from blockservice?
 @export
 def get_proposal_count(pending: bool, executed: bool):
     count = 0
@@ -299,7 +272,7 @@ def add_owner(proposal_id: str):
         owner_list.append(new_owner)
         owners.set(owner_list)
         proposal[proposal_id]['executed'] = True
-        return proposal[proposal_id]
+        return True
     else:
         return f'there was no concensus to add {new_owner}'
 
@@ -313,7 +286,7 @@ def remove_owner(proposal_id: str):
         owner_list.remove(existing_owner)
         owners.set(owner_list)
         proposal[proposal_id]['executed'] = True
-        return proposal[proposal_id]
+        return True
     else:
         return f'there was no concensus to remove {existing_owner}'
 
@@ -330,16 +303,14 @@ def replace_owner(proposal_id: str):
         owner_list.append(new_owner)
         owners.set(owner_list)
         proposal[proposal_id]['executed'] = True
-        return proposal[proposal_id]
+        return True
     else:
         return f'there was no concensus to replace {existing_owner} with {new_owner}'
 
-def route_proposal(proposal_dict: dict):  # find a better name for parameter
-    # use a better error description
+def route_proposal(proposal_dict: dict):
     assert proposal_dict, 'proposal is empty or invalid!'
 
     keys = list(proposal_dict.keys())
-    # return keys
 
     # State update
     state_changes = [
@@ -357,12 +328,11 @@ def route_proposal(proposal_dict: dict):  # find a better name for parameter
 
     # Action proposal
     action_transaction = ['action', 'bulk', 'payload']
-    external_action_transaction = ['action_core', 'action', 'bulk', 'payload']
+    external_action_transaction = ['action_core', 'action', 'payload']
 
     if len(keys) == 1:
         if keys[0] in state_changes:
             if keys[0] == 'change_dailylimit':
-                # will check if relevent
                 assert proposal_dict['change_dailylimit'], 'a payload was not provided!'
             proposal_dict['type'] = 'state_update'
             proposal_dict['executed'] = False
@@ -388,19 +358,18 @@ def route_proposal(proposal_dict: dict):  # find a better name for parameter
         proposal_dict['executed'] = False
         return proposal_dict
 
-    return 'invalid key(s) entry' #check for better error wording
+    return 'invalid key(s) entry' 
 
 def is_confirmed(proposal_id: int):
     if len(owner_confirmed[proposal_id]) == required.get():
         return True
 
-def is_under_limit(amount: float):
+def is_under_limit(token: str, amount: float):
     assert amount > 0, 'cannot enter negative value!'
     if now > last_day.get() + datetime.timedelta(days=1):
-            last_day.set(now)
-            spent_today.set(0)
-    if spent_today.get() + amount > daily_limit.get():
-        return False
+            last_day.set(last_day.get() + datetime.timedelta(days=1))
+            spent_today[token] = 0
+    assert spent_today[token] + amount < daily_limit[token], f'daily limit of {token} has been exceeded!'
     return True
 
 def change_requirement(proposal_id: str):
@@ -408,7 +377,8 @@ def change_requirement(proposal_id: str):
     value = proposal[proposal_id]['change_requirement']
     if is_confirmed(proposal_id=proposal_id):
         valid_requirements(len(owner_list) , value)
-        required.set(value)    
+        required.set(value)  
+        proposal[proposal_id]['executed'] = True  
         return True
     else:    
         return f'there was no concensus to change required confirmations to {value}'
@@ -418,63 +388,14 @@ def change_dailylimit(proposal_id: str):
     keys = list(propsl.keys())
     if 'token' in keys:
         if is_confirmed(proposal_id=proposal_id):
-            daily_limit[propsl['token']] = propsl['amount']    
+            daily_limit[propsl['token']] = propsl['amount']  
+            proposal[proposal_id]['executed'] = True  
             return True
         else:    
             return f"there was no concensus to change token dailylimit to {propsl['amount']}"
 
-    if 'action' in keys:
-        if is_confirmed(proposal_id=proposal_id):
-            daily_limit[propsl['action']] = propsl['amount']    
-            return True
-        else:    
-            return f"there was no concensus to change action dailylimit to {propsl['amount']}"
 
-    if 'external_action' in keys:
-        if is_confirmed(proposal_id=proposal_id):
-            daily_limit[propsl['external_action']] = propsl['amount']    
-            return True
-        else:    
-            return f"there was no concensus to change external action dailylimit to {propsl['amount']}"
-
-## lst001
-
-def handle_token_transfer(proposal_id: int):
-    propsl = proposal[proposal_id]
-    token = I.import_module(propsl['token'])
-    if is_confirmed(proposal_id = proposal_id) and is_under_limit(propsl['payload']['amount']):
-        token.transfer(amount = propsl['payload']['amount'], to = propsl['payload']['to'])
-        spent_today.set(spent_today.get() + propsl['payload']['amount'])
-        proposal[proposal_id]['executed'] = True
-        return True
-    else:
-        #think about fetching token symbol here
-        return f"there was no concensus to transfer {propsl['payload']['amount']}"
-
-def handle_token_approve(proposal_id: int):
-    propsl = proposal[proposal_id]
-    token = I.import_module(propsl['token'])
-    if is_confirmed(proposal_id = proposal_id) and is_under_limit(propsl['payload']['amount']):
-        token.approve(amount = propsl['payload']['amount'], to = propsl['payload']['to'])
-        #spent_today.set(spent_today.get() + proposal['amount'])
-        proposal[proposal_id]['executed'] = True
-        return True
-    else:
-        return f"there was no concensus to approve {propsl['payload']['amount']}"
-
-def handle_token_transfer_from(proposal_id: int):
-    propsl = proposal[proposal_id]
-    token = I.import_module(propsl['token'])
-    if is_confirmed(proposal_id = proposal_id) and is_under_limit(propsl['payload']['amount']):
-        token.transfer_from(amount=propsl['payload']['amount'], to=propsl['payload']['to'], main_account=proposal['payload']['main_account'])
-        #spent_today.set(spent_today.get() + proposal['amount'])
-        proposal[proposal_id]['executed'] = True
-        return True
-    else:
-        return f"there was no concensus to spend {propsl['payload']['amount']} from {propsl['payload']['main_account']}"
-
-
-## action core
+## internal action core
 
 def register_action(proposal_id: int):
     propsl = proposal[proposal_id]['register_action']
@@ -496,7 +417,7 @@ def register_action(proposal_id: int):
             'Action contract does not follow the correct interface!'
 
         actions[action] = contract
-        #use 'registered' instead?
+        proposal[proposal_id]['executed'] = True
         return True 
     else:
         return f"there was no concensus to register {action}"
@@ -507,25 +428,17 @@ def unregister_action(proposal_id: int):
 
     if is_confirmed(proposal_id=proposal_id):
         actions[action] = None
+        proposal[proposal_id]['executed'] = True
         return True
     else:    
         return f"there was no concensus to unregister {action}"
     
-
-def interact(action: str, payload: dict):
+def interact(action: str, payload: Any):
     contract = actions[action]
     module = I.import_module(contract)
-    result = module.interact(payload, S, user)
+    result = module.interact(payload, S, ctx.caller)
     return result   
 
 def bulk_interact(action: str, payloads: list):
     for payload in payloads:
-        interact(action, payload)
-
-
-
-    
-
-
-    
-
+        interact(action=action, payload=payload)
