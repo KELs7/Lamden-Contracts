@@ -11,7 +11,8 @@ def lock_lp(contract: str, amount: float, date: dict = None):
     if lp_points[contract, user] > 0:
         DEX.transfer_liquidity_from(
             contract=contract, to=ctx.this, main_account=user, amount=amount)
-        lock_info[contract, user]["amount"] += amount
+        lock_info[contract, user]["amount"] =+ amount
+        lock_info[contract, user] = lock_info[contract, user]
         return lock_info[contract, user]
     else:
         assert date, "set a lock date!"
@@ -40,6 +41,7 @@ def extend_lock(contract: str, year: int, month: int, day: int, hour: int = 0, m
         year=year, month=month, day=day, hour=hour, minute=minute)
     assert extended_date > unlock_date, "extended date cannot be earlier or previous unlock date."
     lock_info[contract, user]["unlock_date"] = extended_date
+    lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
 
@@ -51,8 +53,9 @@ def burn_lp(contract: str):
     assert lp_amount > 0, "no LPs to burn."
     lock_data = lock_info[contract, user]
     DEX.transfer_liquidity(contract=contract, to="burn", amount=lp_amount)
-    lp_points[contract, user] -= lp_amount
-    lock_info[contract, user]["amount"] -= lp_amount
+    lp_points[contract, user] = 0
+    lock_info[contract, user]["amount"] -= lp
+    lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
 
@@ -65,7 +68,9 @@ def withdraw(contract: str):
     lock_data = lock_info[contract, user]
     assert now >= lock_data["unlock_date"], "cannot withdraw before unlock date."
     DEX.transfer_liquidity(contract=contract, to=user, amount=lp_amount)
+    lp_points[contract, user] = 0
     lock_info[contract, user]["amount"] -= lp_amount
+    lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
 
@@ -81,4 +86,5 @@ def withdraw_part(contract: str, amount: float):
     DEX.transfer_liquidity(contract=contract, to=user, amount=amount)
     lp_points[contract, user] -= amount
     lock_info[contract, user]["amount"] -= amount
+    lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
