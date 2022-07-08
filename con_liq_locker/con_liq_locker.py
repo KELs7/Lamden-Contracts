@@ -11,7 +11,7 @@ def lock_lp(contract: str, amount: float, date: datetime.datetime = None):
     if lp_points[contract, user] > 0:
         DEX.transfer_liquidity_from(
             contract=contract, to=ctx.this, main_account=user, amount=amount)
-        lock_info[contract, user]["amount"] =+ amount
+        lock_info[contract, user]["amount"] += amount
         lock_info[contract, user] = lock_info[contract, user]
         return lock_info[contract, user]
     else:
