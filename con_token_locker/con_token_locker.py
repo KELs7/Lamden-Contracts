@@ -4,18 +4,20 @@ locked_tokens = Hash(default_value=0)
 
 
 @export
-def lock(contract: str, amount: float, date: dict = None):
+def lock(contract: str, amount: float, date: datetime.datetime = None):
     assert amount > 0, "negative value not allowed!"
     user = ctx.caller
     if locked_tokens[contract, user] > 0:
         token = I.import_module(contract)
         token.transfer_from(amount=amount, to=ctx.this, main_account=user)
+        locked_tokens[contract, user] += amount
         lock_info[contract, user]["amount"] += amount
+        lock_info[contract, user] = lock_info[contract, user]
         return lock_info[contract, user]
     else:
         assert date, "set a lock date!"
-        unlock_date = datetime.datetime(
-            year=date["year"], month=date["month"], day=date["day"], hour=date["hour"], minute=date["minute"])
+        assert isinstance(date, datetime.datetime), "date is not a datetime type"
+        unlock_date = date
         assert unlock_date > now, "unlock_date must be set ahead from now!"
         token = I.import_module(contract)
         token.transfer_from(amount=amount, to=ctx.this, main_account=user)
@@ -39,6 +41,7 @@ def extend_lock(contract: str, year: int, month: int, day: int, hour: int = 0, m
         year=year, month=month, day=day, hour=hour, minute=minute)
     assert extended_date > unlock_date, "extended date cannot be earlier or previous unlock date."
     lock_info[contract, user]["unlock_date"] = extended_date
+    lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
 
@@ -51,8 +54,9 @@ def burn(contract: str):
     lock_data = lock_info[contract, user]
     token = I.import_module(contract)
     token.transfer(amount=token_amount, to="burn")
-    locked_tokens[contract, user] -= token_amount
+    locked_tokens[contract, user] = 0
     lock_info[contract, user]["amount"] -= token_amount
+    lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
 
@@ -66,7 +70,9 @@ def withdraw(contract: str):
     assert now >= lock_data["unlock_date"], "cannot withdraw before unlock date."
     token = I.import_module(contract)
     token.transfer(amount=token_amount, to=user)
+    locked_tokens[contract, user] = 0
     lock_info[contract, user]["amount"] -= token_amount
+    lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
 
@@ -79,8 +85,10 @@ def withdraw_part(contract: str, amount: float):
     assert token_amount > 0, "no locked tokens to withdraw"
     lock_data = lock_info[contract, user]
     assert now >= lock_data["unlock_date"], "cannot withdraw before unlock date."
+    assert token_amount > amount, f"you have {token_amount} but trying to withdraw {amount}"
     token = I.import_module(contract)
     token.transfer(amount=amount ,to=user)
     locked_tokens[contract, user] -= amount
     lock_info[contract, user]["amount"] -= amount
+    lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
