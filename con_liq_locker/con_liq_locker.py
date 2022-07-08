@@ -84,6 +84,7 @@ def withdraw_part(contract: str, amount: float):
     assert lp_amount > 0, "no LPs to withdraw"
     lock_data = lock_info[contract, user]
     assert now >= lock_data["unlock_date"], "cannot withdraw before unlock date."
+    assert lp_amount > amount, f"you have {lp_amount} but trying to withdraw {amount}"
     DEX.transfer_liquidity(contract=contract, to=user, amount=amount)
     lp_points[contract, user] -= amount
     lock_info[contract, user]["amount"] -= amount
