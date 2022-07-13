@@ -55,7 +55,7 @@ def burn(contract: str):
     token = I.import_module(contract)
     token.transfer(amount=token_amount, to="burn")
     locked_tokens[contract, user] = 0
-    lock_info[contract, user]["amount"] -= token_amount
+    lock_info[contract, user]["amount"] = 0
     lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
@@ -71,7 +71,7 @@ def withdraw(contract: str):
     token = I.import_module(contract)
     token.transfer(amount=token_amount, to=user)
     locked_tokens[contract, user] = 0
-    lock_info[contract, user]["amount"] -= token_amount
+    lock_info[contract, user]["amount"] = 0
     lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
