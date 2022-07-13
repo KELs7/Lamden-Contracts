@@ -56,7 +56,7 @@ def burn_lp(contract: str):
     lock_data = lock_info[contract, user]
     DEX.transfer_liquidity(contract=contract, to="burn", amount=lp_amount)
     lp_points[contract, user] = 0
-    lock_info[contract, user]["amount"] -= lp
+    lock_info[contract, user]["amount"] = 0
     lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
@@ -71,7 +71,7 @@ def withdraw(contract: str):
     assert now >= lock_data["unlock_date"], "cannot withdraw before unlock date."
     DEX.transfer_liquidity(contract=contract, to=user, amount=lp_amount)
     lp_points[contract, user] = 0
-    lock_info[contract, user]["amount"] -= lp_amount
+    lock_info[contract, user]["amount"] = 0
     lock_info[contract, user] = lock_info[contract, user]
     return lock_info[contract, user]
 
