@@ -45,7 +45,7 @@ class MyTestCase(unittest.TestCase):
     def test_lock_lp_entering_a_negative_amount_should_fail(self):
         #user entering a negative amount
         with self.assertRaises(AssertionError):
-            self.liq_locker.lock_lp(contract="basic_token", amount=-50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40}) 
+            self.liq_locker.lock_lp(contract="basic_token", amount=-50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))
               
         
     def test_lock_lp_locking_first_time_without_a_date_should_fail(self):
@@ -60,7 +60,7 @@ class MyTestCase(unittest.TestCase):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}  
         
         #user locking first time with a set date
-        l = self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})
+        l = self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))
         #checks
         self.assertEqual(l["amount"],50)
         self.assertEqual(l["unlock_date"], Datetime(year=2022, month=2, day=3, hour=14, minute=40))
@@ -69,7 +69,7 @@ class MyTestCase(unittest.TestCase):
     def test_lock_lp_locking_more_lp_should_succeed(self):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))
         #user locking more lp
         l = self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=30)
         #checks
@@ -80,9 +80,9 @@ class MyTestCase(unittest.TestCase):
     def test_lock_lp_locking_more_lp_with_a_set_date_should_succeed(self):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))
         #user locking more again with a set date. however previous date does not change
-        l = self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=30, date = {"year":2022, "month":5, "day":3, "hour":14, "minute":40})
+        l = self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=30, date=Datetime(year=2022, month=5, day=3, hour=14, minute=40))
         #checks
         self.assertEqual(l["amount"],80)
         self.assertEqual(l["unlock_date"], Datetime(year=2022, month=2, day=3, hour=14, minute=40))
@@ -93,15 +93,15 @@ class MyTestCase(unittest.TestCase):
         
         #user with zero lp extending lock period
         with self.assertRaises(AssertionError):
-            self.liq_locker.extend_lock(signer="Benji", environment=env, contract="basic_token", year=2022, month=8, day=5, hour=23, minute=20) 
+            self.liq_locker.extend_lock(signer="Benji", environment=env, contract="basic_token", date=Datetime(year=2022, month=8, day=5, hour=23, minute=20))
             
             
     def test_extend_lock_extending_date_with_lp_should_succeed(self):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))
         #user with lp extending lock period
-        l = self.liq_locker.extend_lock(environment=env, contract="basic_token", year=2022, month=8, day=5, hour=23, minute=20)
+        l = self.liq_locker.extend_lock(environment=env, contract="basic_token", date=Datetime(year=2022, month=8, day=5, hour=23, minute=20))
         #checks
         self.assertEqual(l["amount"],50)
         self.assertEqual(l["unlock_date"], Datetime(year=2022, month=8, day=5, hour=23, minute=20))
@@ -110,12 +110,12 @@ class MyTestCase(unittest.TestCase):
     def test_extend_lock_setting_an_earlier_and_same_lock_date_should_fail(self):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":8, "day":5, "hour":23, "minute":20})
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=8, day=5, hour=23, minute=20))
         #user setting earlier and same lock date
         with self.assertRaises(AssertionError):
-            self.liq_locker.extend_lock(environment=env, contract="basic_token", year=2022, month=8, day=5, hour=23, minute=19)
+            self.liq_locker.extend_lock(environment=env, contract="basic_token", date=Datetime(year=2022, month=8, day=5, hour=23, minute=19))
         with self.assertRaises(AssertionError):
-            self.liq_locker.extend_lock(environment=env, contract="basic_token", year=2022, month=8, day=5, hour=23, minute=20) 
+            self.liq_locker.extend_lock(environment=env, contract="basic_token", date=Datetime(year=2022, month=8, day=5, hour=23, minute=20) )
 
     
     def test_burn_lp_zero_lp_should_fail(self):
@@ -129,7 +129,7 @@ class MyTestCase(unittest.TestCase):
     def test_burn_lp_having_lp_should_succeed(self):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})            
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))            
         #user with lp burns
         l = self.liq_locker.burn_lp(contract="basic_token")
         #checks
@@ -148,7 +148,7 @@ class MyTestCase(unittest.TestCase):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         withdrawal_earlier = {"now": Datetime(year=2022, month=2, day=3, hour=14, minute=39)}
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))
         #user with lp tries to make an earlier withdrawal 
         with self.assertRaises(AssertionError):
             self.liq_locker.withdraw(environment=withdrawal_earlier, contract="basic_token")
@@ -157,7 +157,7 @@ class MyTestCase(unittest.TestCase):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         withdrawal_exact = {"now": Datetime(year=2022, month=2, day=3, hour=14, minute=40)}
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))
         #user with lp makes a withdrawal on exact unlock date
         l = self.liq_locker.withdraw(environment=withdrawal_exact, contract="basic_token")
         #checks
@@ -182,7 +182,7 @@ class MyTestCase(unittest.TestCase):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         withdrawal_earlier = {"now": Datetime(year=2022, month=2, day=3, hour=14, minute=39)}  
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})         
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))         
         #user with lp tries to make an earlier withdrawal 
         with self.assertRaises(AssertionError):
             self.liq_locker.withdraw_part(environment=withdrawal_earlier, contract="basic_token", amount=10)
@@ -191,7 +191,7 @@ class MyTestCase(unittest.TestCase):
         env = {"now": Datetime(year=2022, month=2, day=3, hour=10, minute=40)}
         withdrawal_exact = {"now": Datetime(year=2022, month=2, day=3, hour=14, minute=40)}  
         
-        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date = {"year":2022, "month":2, "day":3, "hour":14, "minute":40})    
+        self.liq_locker.lock_lp(environment=env, contract="basic_token", amount=50, date=Datetime(year=2022, month=2, day=3, hour=14, minute=40))    
         #user with lp tries to make a withdrawal on exact date
         l = self.liq_locker.withdraw_part(environment=withdrawal_exact, contract="basic_token", amount=10)
         #checks
