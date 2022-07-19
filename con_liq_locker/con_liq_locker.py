@@ -1,5 +1,5 @@
-import con_rocketswap_official_v1_1
-DEX = con_rocketswap_official_v1_1
+import dex
+DEX = dex
 lock_info = Hash()
 lp_points = Hash(default_value=0)
 
