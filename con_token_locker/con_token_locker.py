@@ -31,14 +31,15 @@ def lock(contract: str, amount: float, date: datetime.datetime = None):
 
 
 @export
-def extend_lock(contract: str, year: int, month: int, day: int, hour: int = 0, minute: int = 0):
+def extend_lock(contract: str, date: datetime.datetime):
     '''extend locking period whilst your tokens remain ontouched'''
     user = ctx.caller
+    assert date, "set a lock date!"
+    assert isinstance(date, datetime.datetime), 'date is not a datetime type!'
     assert locked_tokens[contract, user] > 0, "no locked tokens found."
     lock_data = lock_info[contract, user]
     unlock_date = lock_data["unlock_date"]
-    extended_date = datetime.datetime(
-        year=year, month=month, day=day, hour=hour, minute=minute)
+    extended_date = date
     assert extended_date > unlock_date, "extended date cannot be earlier or previous unlock date."
     lock_info[contract, user]["unlock_date"] = extended_date
     lock_info[contract, user] = lock_info[contract, user]
